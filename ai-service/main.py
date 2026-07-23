@@ -5,6 +5,7 @@ import os
 import json
 import logging
 import time
+import asyncio
 from fastapi.middleware.cors import CORSMiddleware
 import ollama
 
@@ -29,6 +30,28 @@ os.makedirs(STORAGE_DIR, exist_ok=True)
 
 MODEL_NAME = os.environ.get("MODEL_NAME", "llava")
 client = ollama.Client()
+
+# --- Bounded inference concurrency (wayfinder ticket 17) --------------------
+# ai-service used to serialize inference BY ACCIDENT: the async /extract route
+# called the SYNC ollama client directly, so a single blocking call froze the whole
+# event loop for the entire inference (4-9 min on the old CPU box; ~8.5s on the Mac's
+# native Ollama/Metal). That accidental full-serialization was also the only thing
+# keeping two inferences from ever contending for memory at once.
+#
+# We now run the blocking call off the loop via asyncio.to_thread (so health checks
+# and other requests stay responsive during inference) AND cap true concurrency with
+# this semaphore -- the EXPLICIT replacement for the mutex the serialization used to
+# provide. Default 2 concurrent on a 32GB Mac (qwen2.5vl:7b ~6-8GB weights + per-
+# request KV/image context; 2 is comfortable, 3-4 pushes the ceiling with big vision
+# inputs). Set AI_MAX_CONCURRENCY=1 to restore strict one-at-a-time.
+#
+# NOTE: realizing *actual* parallel throughput also needs native Ollama's own
+# OLLAMA_NUM_PARALLEL >= AI_MAX_CONCURRENCY. That is a GLOBAL host setting shared with
+# every other project's Ollama on this Mac, so it's left to the operator (see
+# RUNNING.md) rather than forced here. If it's lower, requests past that limit queue
+# INSIDE Ollama -- still correct, just serialized there instead of here.
+AI_MAX_CONCURRENCY = int(os.environ.get("AI_MAX_CONCURRENCY", "2"))
+INFERENCE_SEMAPHORE = asyncio.Semaphore(AI_MAX_CONCURRENCY)
 
 import pillow_heif
 pillow_heif.register_heif_opener()  # lets PIL.Image.open() read HEIC/HEIF, which PyMuPDF can't
@@ -100,6 +123,16 @@ def call_model_with_retry(messages):
                 f"Ollama call failed (attempt {attempt + 1}/{1 + len(MODEL_RETRY_BACKOFF_SECONDS)}): {e}"
             )
     raise last_error
+
+
+async def call_model_bounded(messages):
+    """Async wrapper for call_model_with_retry: runs the blocking Ollama call in a
+    worker thread (asyncio.to_thread) so it never freezes the event loop, gated by
+    INFERENCE_SEMAPHORE so at most AI_MAX_CONCURRENCY inferences run at once. The
+    shared ollama.Client wraps a thread-safe httpx.Client, so concurrent .chat calls
+    from the thread pool are safe. See the AI_MAX_CONCURRENCY note above (ticket 17)."""
+    async with INFERENCE_SEMAPHORE:
+        return await asyncio.to_thread(call_model_with_retry, messages)
 
 @app.on_event("startup")
 def startup_event():
@@ -231,7 +264,7 @@ async def extract_document(request: Request):
         """
 
         try:
-            response = call_model_with_retry([{
+            response = await call_model_bounded([{
                 'role': 'user',
                 'content': prompt,
                 'images': base64_images

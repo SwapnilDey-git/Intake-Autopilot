@@ -8,6 +8,15 @@ type TravelSuggestion = {
   missing_addresses: string[];
 };
 
+// Completeness verdict from the backend (wayfinder ticket 21). mandatory_fields is
+// the single source of truth for which fields are required; the badge recomputes
+// pass/fail live against editData so it clears as the reviewer fills a blank.
+type Completeness = {
+  is_complete: boolean;
+  missing_fields: string[];
+  mandatory_fields: string[];
+};
+
 type Form = {
   id: number;
   filename: string;
@@ -18,6 +27,7 @@ type Form = {
   confidence?: any;
   error?: string;
   travel_suggestion?: TravelSuggestion;
+  completeness?: Completeness;
 };
 
 const NOT_FOUND_VALUES = new Set(["Not Found", "Unknown"]);
@@ -326,6 +336,22 @@ export default function Dashboard() {
   // independent of the model's (unreliable) self-reported confidence.
   const formatFlags = isFailed ? [] : getFormatFlags(editData);
 
+  // Completeness go/no-go (wayfinder ticket 21). The required-field list comes from
+  // the backend payload (single source of truth), but presence is recomputed live
+  // against editData so the badge clears the instant a reviewer fills a blank -- the
+  // backend re-checks authoritatively at review time and logs the verdict. A failed
+  // extraction has no data, so it's incomplete by definition.
+  const mandatoryFields = currentForm?.completeness?.mandatory_fields ?? [];
+  const mandatoryMissing = isFailed
+    ? mandatoryFields
+    : mandatoryFields.filter((f) => {
+        if (f === "is_signed") return editData.is_signed !== true;
+        const raw = (editData as Record<string, unknown>)[f];
+        const s = typeof raw === "string" ? raw.trim() : typeof raw === "number" ? String(raw) : "";
+        return s === "" || NOT_FOUND_VALUES.has(s);
+      });
+  const isComplete = mandatoryFields.length > 0 && mandatoryMissing.length === 0;
+
   return (
     <main className="container mx-auto p-8 min-h-screen flex flex-col">
       <header className="mb-8 flex items-center justify-between">
@@ -429,6 +455,26 @@ export default function Dashboard() {
                     <p className="text-ink-muted text-sm mt-0.5">The AI did not detect a valid signature at the bottom of the form.</p>
                   </div>
                 </div>
+              )}
+
+              {!isFailed && mandatoryFields.length > 0 && (
+                isComplete ? (
+                  <div className="mb-5 bg-success/10 border border-success/40 rounded-md p-4 flex items-center gap-3">
+                    <svg className="w-5 h-5 text-success shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <div>
+                      <h4 className="text-success font-semibold uppercase tracking-wide text-xs">Complete</h4>
+                      <p className="text-ink-muted text-sm mt-0.5">All required fields are present. Still verify the flagged fields below before approving.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-5 bg-danger/10 border border-danger/40 rounded-md p-4 flex items-center gap-3">
+                    <svg className="w-5 h-5 text-danger shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                    <div>
+                      <h4 className="text-danger font-semibold uppercase tracking-wide text-xs">Incomplete — Required Fields Missing</h4>
+                      <p className="text-ink-muted text-sm mt-0.5">{mandatoryMissing.join(", ")} {mandatoryMissing.length === 1 ? "is" : "are"} required to file. Fill or confirm {mandatoryMissing.length === 1 ? "it" : "them"} — or approve knowingly if the client still owes {mandatoryMissing.length === 1 ? "it" : "them"} (the gap is logged either way).</p>
+                    </div>
+                  </div>
+                )
               )}
 
               {!isFailed && missingFields.length > 0 && (

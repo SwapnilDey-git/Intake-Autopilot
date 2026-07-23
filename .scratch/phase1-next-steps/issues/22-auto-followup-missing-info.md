@@ -1,6 +1,15 @@
 Type: grilling
-Status: open
-Blocked by: 07a, 07b, 21
+Status: claimed
+Blocked by: 07a, 07b
+<!-- 21 (completeness signal) RESOLVED + BUILT 2026-07-23 -- the "detect missing" half
+this ticket needs now exists (backend evaluate_completeness + audit_log 'completeness'
+event, returning a missing_fields list this ticket will consume). Remaining blockers are
+the send side: 07a (client-approved wording) + 07b (Gmail send infra). -->
+
+
+<!-- Claimed 2026-07-23 for a design grilling (path-finding). Implementation stays
+blocked by 07a/07b/21; this session resolves the DESIGN decision only. -->
+
 
 ## Question
 

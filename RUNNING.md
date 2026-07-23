@@ -263,6 +263,18 @@ Verify the wiring: `docker exec intake-ai env | grep -E 'OLLAMA_HOST|MODEL_NAME'
 
 ---
 
+## Cross-channel inference concurrency (added 2026-07-23, wayfinder ticket 17)
+
+All three intake channels (webhook, Gmail, WhatsApp) call the same `ai-service` `/extract`. Two facts about how that's now handled:
+
+1. **`ai-service` bounds its own concurrency.** The `/extract` route runs the blocking Ollama call in a worker thread (`asyncio.to_thread`) so inference no longer freezes the event loop, gated by a semaphore (`AI_MAX_CONCURRENCY`, default **2**) so at most that many inferences run at once. This replaces the *accidental* full-serialization the code used to have (an `async` route calling the sync Ollama client directly) with an **explicit, tunable** cap. Set `AI_MAX_CONCURRENCY=1` to restore strict one-at-a-time; it's surfaced in `docker-compose.override.yml`.
+   - **Why a cap at all:** with the accidental serialization gone, nothing else stops two big vision inferences contending for memory. 2 is comfortable on the 32GB Mac with `qwen2.5vl:7b` (~6–8GB weights + per-request KV/image context); 3–4 pushes the ceiling on large multi-page inputs.
+
+2. **Actual parallel throughput also needs native Ollama's `OLLAMA_NUM_PARALLEL`.** `ai-service` allowing 2 concurrent requests only yields real parallelism if Ollama itself will serve 2 at once. That's governed by `OLLAMA_NUM_PARALLEL` — a **global setting on your native Ollama, shared with every other project on this Mac.** It's intentionally left unset here rather than forced, since changing it affects those other projects too. To opt in: `launchctl setenv OLLAMA_NUM_PARALLEL 2` (or set it in however you launch `ollama serve`) and restart Ollama. If it stays at the default, a 2nd concurrent request simply queues *inside* Ollama — still correct, just serialized there instead of in `ai-service`.
+   - **Note the risk calculus is hardware-dependent:** the original concern (a caller's 20-min n8n timeout expiring while forms queue up, triggering a retry-storm) needed ~4 forms queued on the old CPU box (4–9 min/form) but ~141 on the Mac (~8.5s/form) — so at pilot volume this is a non-issue on the Mac regardless.
+
+---
+
 ## Idempotency, audit log, travel cost, and error handling (added 2026-07-11)
 
 Four things the client's follow-up email asked for. All four are live in `backend/main.py`, `ai-service/main.py`, `dashboard/src/app/page.tsx`, and `n8n/Intake_Flow_Real.json` — schema changes are in `database/schema.sql` (re-run it per above if your DB predates this).

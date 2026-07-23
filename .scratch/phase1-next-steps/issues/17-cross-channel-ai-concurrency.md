@@ -1,5 +1,6 @@
 Type: grilling
-Status: open
+Status: resolved
+
 
 ## Question
 
@@ -21,4 +22,51 @@ With webhook, Gmail, and WhatsApp now merged into one production n8n workflow (t
 
 ## Answer
 
-(pending)
+**Resolved 2026-07-23 (grilling + build, same session).**
+
+**Re-grounding (the decisive move).** The ticket's "grounded facts" were verified against
+the Windows CPU box (7.6GB, 4–9 min/inference, in-container Ollama). This Mac runs native
+Ollama on Metal at ~8.5s/form. Re-running the retry-storm math on each box: the failure
+mode (a caller's 20-min n8n timeout expiring while forms queue, → retry → rejoin queue)
+needs ~4 forms queued on Windows (20min ÷ ~6min) but **~141 on the Mac** (20min ÷ 8.5s).
+So the specific risk this ticket was opened for is largely a **CPU-box artifact** — a
+non-issue at pilot volume on the Mac. Re-verified 2026-07-23 that ai-service was still
+*accidentally* serialized (async `/extract` route calling the sync `client.chat` directly,
+single uvicorn process, no `workers`) — which was also the only thing preventing two
+inferences from contending for memory at once.
+
+**Decision (user's call): "actually parallelize" — done RIGHT (bounded, not a free-for-all).**
+Considered three paths: (A) document the serialization as load-bearing, no code change;
+(B) A + pin `OLLAMA_NUM_PARALLEL` globally; (C) genuinely parallelize ai-service. User
+chose C. Since naive parallelization would re-open the exact 32GB-ceiling question the
+serialization was silently sidestepping, it was built **bounded**:
+
+- `ai-service/main.py`: `/extract` now runs the blocking Ollama call via
+  `asyncio.to_thread` (event loop no longer frozen during inference — health checks/other
+  requests stay responsive), gated by `INFERENCE_SEMAPHORE = asyncio.Semaphore(AI_MAX_CONCURRENCY)`,
+  `AI_MAX_CONCURRENCY` env default **2**. New `call_model_bounded()` wraps
+  `call_model_with_retry()`. The shared `ollama.Client` wraps a thread-safe httpx.Client, so
+  concurrent `.chat` from the thread pool is safe.
+- **Cap rationale:** 2 concurrent is comfortable on 32GB with `qwen2.5vl:7b` (~6–8GB weights
+  + per-request KV/image context); 3–4 pushes the ceiling on big multi-page vision inputs.
+  `AI_MAX_CONCURRENCY=1` restores strict serialization.
+- **The one global knob left to the operator:** true parallel throughput also needs native
+  Ollama's `OLLAMA_NUM_PARALLEL >= AI_MAX_CONCURRENCY`. That's a **global host setting shared
+  with every other Mac project's Ollama**, so it was deliberately NOT forced in code — it's
+  documented as an opt-in (`launchctl setenv`). If left at default, extras queue *inside*
+  Ollama (still correct, just serialized there). This is the honest cost of choice C that the
+  grill surfaced: the app-side cap is project-scoped, but the throughput payoff isn't.
+- `docker-compose.override.yml`: `AI_MAX_CONCURRENCY=2` surfaced for visibility/tuning.
+- `RUNNING.md`: new "Cross-channel inference concurrency" section (both facts + the hardware-
+  dependent risk calculus + the `OLLAMA_NUM_PARALLEL` opt-in).
+
+**Verification:** `py_compile` clean. Confirmed ai-service targets Python 3.11-slim, where a
+module-level `asyncio.Semaphore()` is safe (the loop-binding footgun was removed in 3.10; the
+host's 3.9 tripped on it during testing but is not the runtime). Cap logic unit-tested: 10
+simultaneous requests → peak concurrent inference = 2 (capped), all complete. NOT yet run
+against the live 3.11 stack end-to-end (needs the stack up — a shared-infra action pending
+user go-ahead).
+
+**Trade-off accepted:** more moving parts than the "document only" path, for throughput
+headroom that pilot volume doesn't strictly need yet — but the event-loop-unblocking half is
+a pure win regardless of throughput, and the bounded cap keeps the memory risk contained.

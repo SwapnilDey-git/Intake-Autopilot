@@ -63,6 +63,45 @@ REISEKOSTEN_CELL = "C16"  # Reisekosten 9160 -- computed, not a raw extracted fi
 
 UNMAPPED_VALUES = {None, "", "Unknown", "Not Found"}
 
+# --- Completeness check (wayfinder ticket 21) -------------------------------
+# Automated pass/fail: is a submission missing any field a filing genuinely needs?
+# Decided 2026-07-23 (grilling): identity + signature are hard requirements, plus
+# the money fields that are rarely legitimately zero for a real filing client.
+# provision_travel is deliberately OPTIONAL -- it is genuinely often zero (many
+# carers don't travel), so requiring it would false-flag every no-travel form and
+# train reviewers to ignore the badge. Shipped as a constant so the client's real
+# "must-have" answer swaps in one line later; wayfinder ticket 22 (auto-follow-up)
+# will consume exactly this missing_fields list. This is a WARNING signal, never a
+# hard gate -- a reviewer may still approve an incomplete form (e.g. chasing a
+# signature separately); the verdict is recorded to audit_log at review time.
+MANDATORY_FIELDS = [
+    "tax_year", "e_card_number", "name",
+    "honorare", "svs_sva", "wko_contribution",
+    "is_signed",
+]
+
+def _field_is_present(field_key: str, value) -> bool:
+    # "Blank" reuses UNMAPPED_VALUES so completeness and the Excel writer agree on
+    # what counts as no-value. A blank money field is genuinely ambiguous (real zero
+    # vs. omission) and can't be resolved from extraction -- flagging it is
+    # deliberately conservative, and a human confirms.
+    if field_key == "is_signed":
+        # Boolean gate: an unsigned form (false / "no" / absent) is incomplete.
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in {"true", "yes", "1", "signed"}
+    if isinstance(value, str):
+        return value.strip() not in UNMAPPED_VALUES
+    return value not in UNMAPPED_VALUES
+
+def evaluate_completeness(fields: dict) -> dict:
+    """Pure pass/fail over MANDATORY_FIELDS. Returns the verdict plus the named
+    missing fields so the dashboard can show them and ticket 22 can later ask the
+    client for exactly those."""
+    fields = fields or {}
+    missing = [k for k in MANDATORY_FIELDS if not _field_is_present(k, fields.get(k))]
+    return {"is_complete": not missing, "missing_fields": missing, "mandatory_fields": MANDATORY_FIELDS}
+
 # Straight-line (haversine) distance x a circuity constant approximates real
 # road distance closely enough for a reimbursement calc -- see
 # .scratch/phase1-next-steps/research/05-geocoding-routing.md for the full
@@ -227,6 +266,11 @@ async def get_pending_forms():
                 )
             else:
                 form["travel_suggestion"] = {"distance_km": None, "missing_addresses": ["home_address", "address_austria"]}
+            # Completeness verdict on the extracted values (ticket 21). The dashboard
+            # recomputes this live as the reviewer edits, using this payload's
+            # mandatory_fields list -- so the list has one source of truth (here) while
+            # the badge still clears the moment a reviewer fills a blank.
+            form["completeness"] = evaluate_completeness(parsed if isinstance(parsed, dict) else {})
         return forms
 
     logger.warning("Serving MOCK pending-forms data — database is not connected.")
@@ -363,6 +407,20 @@ async def submit_review(form_id: int, review: ReviewUpdate):
             },
         )
 
+        # Record the completeness verdict on the reviewer's CURRENT values (not the
+        # original extraction) -- so filling a blank in the dashboard before approving
+        # is reflected, and the audit trail shows whether an incomplete form was
+        # knowingly approved. Warning only; never blocks the approval above.
+        completeness = evaluate_completeness(d)
+        await database.execute(
+            "INSERT INTO audit_log (form_id, event_type, actor, details) VALUES (:form_id, 'completeness', :actor, :details)",
+            {
+                "form_id": form_id,
+                "actor": review.reviewer_name,
+                "details": json.dumps(completeness),
+            },
+        )
+
         reisekosten = None
         if review.approved:
             try:
@@ -439,6 +497,7 @@ async def submit_review(form_id: int, review: ReviewUpdate):
             "status": status,
             "reisekosten": reisekosten,
             "excel_path": excel_path if review.approved else None,
+            "completeness": completeness,
         }
     except Exception as e:
         return {"success": False, "error": str(e)}
