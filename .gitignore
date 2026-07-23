@@ -19,6 +19,13 @@ dashboard/.next/
 dashboard/out/
 node_modules/
 
+# === .scratch: holds REAL CLIENT PII at its root (E1/E1a tax forms, WhatsApp
+# screenshots, client-reply images). Version ONLY the wayfinder tracker markdown;
+# never the client documents. ===
+.scratch/*
+!.scratch/phase1-next-steps
+.scratch/phase1-next-steps/image
+
 # === OS / editor cruft ===
 .DS_Store
 *.swp
