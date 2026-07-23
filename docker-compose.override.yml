@@ -1,0 +1,17 @@
+# Mac-local override (NOT part of the handoff — machine-specific, gitignore-style local-only).
+# Points ai-service at the host's NATIVE Ollama (Metal GPU) instead of the CPU-only
+# containerized one, and pins the model to qwen2.5vl:7b for this machine.
+#
+# IMPORTANT — do NOT run a bare `docker compose up -d`. Native Ollama already binds host
+# :11434, so starting the containerized `ollama` service would fail with a port conflict.
+# Compose override merge does NOT let an empty `ports:`/`depends_on:` list clear the base,
+# so the ollama container can't be neutralized from this file. Bring the stack up WITHOUT it:
+#
+#   docker compose up -d --build --no-deps postgres n8n backend ai-service
+#
+# (ollama is only a depends_on of ai-service, so --no-deps keeps it from being pulled in.)
+services:
+  ai-service:
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - MODEL_NAME=qwen2.5vl:7b
