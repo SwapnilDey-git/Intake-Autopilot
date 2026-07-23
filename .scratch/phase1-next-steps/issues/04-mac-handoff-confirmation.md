@@ -1,5 +1,5 @@
 Type: task
-Status: open
+Status: resolved
 
 ## Question
 
@@ -15,4 +15,30 @@ Not technically blocked by anything else on this map, but practically most usefu
 
 ## Answer
 
-(pending — waiting on recipient's actual test run)
+**Resolved 2026-07-23 — superseded by reality: the stack demonstrably runs on the M2 Max Mac.**
+
+The recipient-report framing (built around the OLD `intake-autopilot-mac-handoff.tar.gz`,
+2026-07-14, `qwen3-vl:8b` baked in) is moot. Work has since been happening directly ON the
+M2 Max Mac from the successor **2026-07-21 handoff** (this project dir), and on 2026-07-23 the
+full stack was brought up and both features verified end-to-end live:
+
+- `docker compose up -d --build --no-deps postgres n8n backend ai-service` (the native-Ollama
+  form) → all four containers healthy; ai-service wired to native Ollama on Metal
+  (`OLLAMA_HOST=host.docker.internal:11434`, `MODEL_NAME=qwen2.5vl:7b`, `AI_MAX_CONCURRENCY=2`).
+- **Extraction validated live**: 3 concurrent `/extract` on `testdoc/Test Doc 2.pdf` → all
+  HTTP 200, full 12-field results, model at 100% GPU on Metal (~6–8s/inference warm). The old
+  ticket's `qwen3-vl:8b` broken-output risk does NOT apply — this handoff runs `qwen2.5vl:7b`,
+  which reads cleanly.
+- Backend review path, completeness check (ticket 21), and bounded concurrency (ticket 17)
+  all confirmed working against the live stack.
+
+**The one Mac-specific quirk found** (worth recording for any future fresh bring-up): right
+after Docker Desktop starts cold, the first `docker compose build` failed twice with
+`DeadlineExceeded: context deadline exceeded` fetching `python:3.11-slim` metadata — the
+registry connection hadn't settled. Fix: an explicit `docker pull python:3.11-slim` once (it
+succeeded immediately), after which the compose build ran clean. Not a package defect; a
+Docker-Desktop-cold-start networking artifact. Also note the macOS `date +%N` / `timeout` /
+zsh-no-word-split gotchas hit during scripting — host is zsh + BSD userland, not GNU.
+
+No blocker remained; closing as confirmed-working rather than waiting on a separate recipient
+run that the current working setup already answers.
