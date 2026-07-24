@@ -843,6 +843,177 @@
           "name": "Postgres account"
         }
       }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO whatsapp_contacts (wa_id) VALUES ($1) ON CONFLICT (wa_id) DO NOTHING;",
+        "options": {
+          "queryReplacement": "={{ [$json.body.entry[0].changes[0].value.messages[0].from] }}"
+        }
+      },
+      "id": "98e391dc-c21a-4485-9eaf-e855d853bf0d",
+      "name": "Mark Seen (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        2180
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Only a genuine inbound TEXT message (a first-contact greeting) should reach\n// the auto-reply path. Drops WhatsApp status-update webhooks (delivery/read\n// receipts carry `statuses`, no `messages`) and any non-text message type.\n// Returning [] stops this branch (no greeting).\nconst value = $input.first().json.body?.entry?.[0]?.changes?.[0]?.value;\nconst message = value?.messages?.[0];\nif (!message || message.type !== 'text') {\n  return [];\n}\nreturn [{ json: { sender: message.from } }];\n"
+      },
+      "id": "b7ea55db-4a9b-43e5-a850-d2d77e927564",
+      "name": "Parse Text Message (WhatsApp)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        2540
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO whatsapp_contacts (wa_id) VALUES ($1) ON CONFLICT (wa_id) DO NOTHING RETURNING wa_id;",
+        "options": {
+          "queryReplacement": "={{ [$json.sender] }}"
+        }
+      },
+      "id": "e9de9c59-1de1-4970-bedb-03bd848f014d",
+      "name": "Upsert Contact (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        96,
+        2540
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// === WhatsApp first-contact greeting — SINGLE SWAPPABLE CONFIG (ticket 20a) ===\n// Swap these constants when the client confirms real copy / the WABA phone id.\n//\n// phone_number_id: the WhatsApp Business phone-number ID (Meta > WhatsApp > API\n// Setup). PLACEHOLDER — set to the test-tier id for verification, the real id\n// only at go-live (gated on Meta Business Verification, ticket 08).\nconst PHONE_NUMBER_ID = 'PLACEHOLDER_PHONE_NUMBER_ID';\n//\n// greeting_text: bilingual German + Romanian. The German half is the REAL copy\n// from production usage (client_reply.md line 10, verbatim). The Romanian half\n// is a PLACEHOLDER — do NOT machine-translate it into live delivery; confirm\n// the real Romanian first-contact copy with the client before go-live.\nconst GREETING_DE = 'Hallo. Bitte reichen Sie Ihre Einkommensteuererklärung ein. Ich sende Ihnen dann das Informationsblatt, die E-Card und den Personalausweis zu. Bitte teilen Sie mir mit, wie hoch die Versandkosten sind. Vielen Dank.';\nconst GREETING_RO = '[RO PLACEHOLDER — Romanian first-contact copy to be confirmed with client before go-live]';\nconst greeting_text = `${GREETING_DE}\\n\\n${GREETING_RO}`;\n\nreturn [{ json: { wa_id: $json.wa_id, phone_number_id: PHONE_NUMBER_ID, greeting_text } }];\n"
+      },
+      "id": "2daa9484-66af-4521-86f2-aa4ddffc9ed6",
+      "name": "WA Greeting Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        2540
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.phone_number_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"messaging_product\":\"whatsapp\",\"to\":\"{{ $json.wa_id }}\",\"type\":\"text\",\"text\":{\"body\":{{ JSON.stringify($json.greeting_text) }}}}",
+        "options": {}
+      },
+      "id": "55abeee8-1ca1-4290-8727-fe981bdc9106",
+      "name": "Send Greeting (WhatsApp)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        608,
+        2540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Y95ffpYq1xgP0JZC",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE whatsapp_contacts SET greeted_at = now() WHERE wa_id = $1;",
+        "options": {
+          "queryReplacement": "={{ [$node[\"WA Greeting Config\"].json.wa_id] }}"
+        }
+      },
+      "id": "42d54388-ab07-41a5-923c-cceedbcfb85a",
+      "name": "Mark Greeted (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        864,
+        2540
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log (form_id, event_type, actor, details) VALUES (NULL, 'greeting_sent', 'n8n-whatsapp', $1);",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify({ wa_id: $node[\"WA Greeting Config\"].json.wa_id })] }}"
+        }
+      },
+      "id": "c02f4402-27c6-4f1a-91a8-232dac8e5d7f",
+      "name": "Audit Greeting (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        2540
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log (form_id, event_type, actor, details) VALUES (NULL, 'greeting_failed', 'n8n-whatsapp', $1);",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify({ wa_id: $node[\"WA Greeting Config\"].json.wa_id, error: ($json.error || 'send failed') })] }}"
+        }
+      },
+      "id": "46183823-9621-40fc-9f72-ec02827125a0",
+      "name": "Audit Greeting Failure (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        864,
+        2680
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
     }
   ],
   "connections": {
@@ -1117,6 +1288,18 @@
             "node": "Extract Media Info (WhatsApp)",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Mark Seen (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Text Message (WhatsApp)",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -1199,6 +1382,68 @@
         [
           {
             "node": "Insert Audit Log (Failure, WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Text Message (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Upsert Contact (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Contact (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "WA Greeting Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Greeting Config": {
+      "main": [
+        [
+          {
+            "node": "Send Greeting (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Greeting (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Mark Greeted (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Audit Greeting Failure (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Greeted (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Audit Greeting (WhatsApp)",
             "type": "main",
             "index": 0
           }

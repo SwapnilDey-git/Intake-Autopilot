@@ -1,6 +1,5 @@
 Type: task
-Status: open
-Blocked by: (build unblocked — see note)
+Status: built — live test-tier verification pending (needs Meta test creds + stack + n8n activation)
 
 ## Task
 
@@ -68,6 +67,45 @@ Target workflow: `n8n/Intake_Flow_Real.json` (live id `sn3IWsWJ04lCYkYG`), Whats
   row, intake not blocked.
 - Confirm node/connection integrity via Postgres (per the ticket-09 / ticket-16 live-testing
   discipline — "success" execution status alone is not trust).
+
+## Build progress (2026-07-24)
+
+**Code-complete + offline-verified. Live test-tier send still pending.**
+
+Done:
+- `database/schema.sql` — added `whatsapp_contacts(wa_id PK, first_seen_at, greeted_at)`;
+  documented the new `greeting_sent` / `greeting_failed` audit event types + nullable `form_id`.
+- `n8n/Intake_Flow_Real.json` — added 8 nodes (36 → 44), wired exactly per the build spec:
+  - Media (true) branch: `Mark Seen (WhatsApp)` added alongside the unchanged `Extract Media
+    Info` path (records media-first senders per decision 2).
+  - No-media (false) branch — previously dead: `Parse Text Message` → `Upsert Contact`
+    (`INSERT ... ON CONFLICT DO NOTHING RETURNING wa_id`, the dedupe gate) → `WA Greeting
+    Config` (single swappable copy/phone-id constant) → `Send Greeting` (HTTP POST Graph API
+    v21.0, `retryOnFail`/`onError: continueErrorOutput`, reuses the WABA header-auth cred) →
+    success: `Mark Greeted` → `Audit Greeting`; error: `Audit Greeting Failure`.
+  - Built via idempotent script; committed as CRLF to match the file's existing line endings
+    (Windows-origin export) so the diff is +246/-1, not a full-file reformat.
+
+Offline verification (real jsCode extracted from the committed workflow, exercised in node):
+- `Parse Text Message`: text → greet (sender extracted); image → drop; **status-update
+  webhook (delivery/read receipt) → drop**; empty/malformed → drop. All pass.
+- `WA Greeting Config`: passes `wa_id` through, German copy verbatim present, RO placeholder
+  present, bilingual (`\n\n` separator).
+
+Still to do (task 4 — cannot be done without operator/Meta):
+1. Apply schema: `psql -h localhost -p 5432 -U admin -d intake -f database/schema.sql`.
+2. Re-import the updated workflow into n8n and re-activate (browser-only; watch for the
+   duplicate-import gotcha — check `updatedAt`).
+3. Set `PHONE_NUMBER_ID` in `WA Greeting Config` to the **test-tier** phone-number id and add
+   whitelisted recipient numbers in Meta.
+4. Run cases (a) new text sender → one greeting + `greeted_at` + `greeting_sent` audit;
+   (b) same sender again → no second greeting; (c) new sender media-first → no greeting,
+   `wa_id` recorded, doc flows through intake; (d) send-failure → `greeting_failed` audit,
+   intake not blocked. Confirm each via Postgres.
+
+Known edge (accepted, matches design): if the greeting SEND fails after retries, the sender
+is already recorded (upsert ran first) so `greeted_at` stays NULL and they won't be re-greeted
+on a later message. Best-effort by design; `WHERE greeted_at IS NULL` surfaces such senders.
 
 ## Gates carried forward (do NOT cross without sign-off)
 

@@ -31,8 +31,11 @@ CREATE TABLE IF NOT EXISTS reviews (
 ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reviewer_name VARCHAR(255);
 
 -- who/what/when for every extraction, approval, rejection, duplicate block,
--- Excel write, and original-document filing. event_type values: extraction,
--- extraction_failed, approval, rejection, duplicate_blocked, write, file.
+-- Excel write, original-document filing, and WhatsApp first-contact greeting.
+-- event_type values: extraction, extraction_failed, approval, rejection,
+-- duplicate_blocked, write, file, completeness, greeting_sent. NOTE: form_id
+-- is a nullable FK -- the 'greeting_sent' event has no associated form, so it
+-- is written with form_id = NULL.
 CREATE TABLE IF NOT EXISTS audit_log (
     id SERIAL PRIMARY KEY,
     form_id INTEGER REFERENCES forms(id) ON DELETE CASCADE,
@@ -40,6 +43,22 @@ CREATE TABLE IF NOT EXISTS audit_log (
     actor VARCHAR(255),
     details JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- First-contact dedupe for the WhatsApp intake channel (ticket 20a). One row
+-- per WhatsApp sender (wa_id = the sender's phone in Meta's international
+-- format). A sender is recorded on their FIRST inbound message of ANY kind
+-- (text or media) so a media-first client who skips the greeting is never
+-- greeted later. The auto-greeting fires only when a brand-new sender's first
+-- message is a plain text (no document) -- see n8n/Intake_Flow_Real.json's
+-- WhatsApp branch. greeted_at is NULL until/unless the greeting is actually
+-- sent. Insert is done with `ON CONFLICT (wa_id) DO NOTHING RETURNING wa_id`,
+-- so a returned row == genuinely-new sender (race-safe against two fast
+-- messages). Purely a runtime dedupe table -- carries no tax data.
+CREATE TABLE IF NOT EXISTS whatsapp_contacts (
+    wa_id VARCHAR(32) PRIMARY KEY,
+    first_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    greeted_at TIMESTAMP
 );
 
 -- Small lookup table of known carer/client addresses -> coordinates, populated
