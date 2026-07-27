@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  /* Neutral surfaces — flat, no gradients. A calm near-black, not pure black. */
+  --color-canvas: oklch(0.16 0.006 260);
+  --color-surface: oklch(0.205 0.006 260);
+  --color-surface-hover: oklch(0.245 0.007 260);
+  --color-border: oklch(0.32 0.01 260);
+
+  /* Text */
+  --color-ink: oklch(0.96 0.003 260);
+  --color-ink-muted: oklch(0.78 0.01 260);
+  --color-ink-faint: oklch(0.6 0.01 260);
+
+  /* Single accent — primary actions, focus, current-state only (Restrained strategy). */
+  --color-accent: oklch(0.64 0.14 250);
+  --color-accent-hover: oklch(0.7 0.14 250);
+
+  /* Semantic trio — desaturated, used for banners/state only, never decoration. */
+  --color-success: oklch(0.64 0.13 155);
+  --color-success-hover: oklch(0.7 0.13 155);
+  --color-danger: oklch(0.62 0.16 20);
+  --color-danger-hover: oklch(0.68 0.16 20);
+  --color-warning: oklch(0.75 0.13 80);
+
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+}
