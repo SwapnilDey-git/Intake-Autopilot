@@ -37,3 +37,37 @@ body {
   font-family: var(--font-sans);
   min-height: 100vh;
 }
+
+/* Browser surfaces themed from the palette — the parts we don't draw still carry
+   the system. A review tool opened dozens of times a day should feel built, not
+   assembled: selection, caret, and scrollbars all speak Signal Blue / the neutrals,
+   never the browser's default blue-on-white. */
+::selection {
+  background-color: color-mix(in oklch, var(--color-accent) 32%, transparent);
+  color: var(--color-ink);
+}
+
+* {
+  caret-color: var(--color-accent);
+}
+
+/* Thin, inert scrollbars that read as chrome, not content (Firefox + WebKit). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 8px;
+  border: 2px solid var(--color-canvas);
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-ink-faint);
+}

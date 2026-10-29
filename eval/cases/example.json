@@ -1,0 +1,18 @@
+{
+  "document": "testdoc/Test Doc 2.pdf",
+  "notes": "Verified ground truth for the SYNTHETIC testdoc/Test Doc 2.pdf (LEO PUMP form, no real PII -- safe to commit). Field values transcribed by a human directly from the source image, independent of any model output. Serves as the harness's checked-in reference case; real client cases go in sibling *.json files here and are gitignored. Scored by default when present.",
+  "fields": {
+    "tax_year": "2023",
+    "e_card_number": "215362910778",
+    "name": "Swoopneel Deg",
+    "address_austria": "Karl Marx Sarani, Hawaii",
+    "home_address": "Mount Dracula Street, Bucharest",
+    "honorare": "€10,000000/-",
+    "wko_contribution": "€350/-",
+    "provision_travel": "€150/-",
+    "svs_sva": "€2000/-",
+    "marital_status": "Un Married",
+    "children": "8",
+    "is_signed": true
+  }
+}

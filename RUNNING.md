@@ -227,9 +227,24 @@ Flagged values surface in a **"Format Check"** warning banner ("… these values
 **Why not the alternatives** (analysed 2026-07-21, all rejected):
 - **B — multi-sample agreement** (extract 3× at temp>0, flag disagreement): ~3× latency on already-slow inference, and misses *confident* misreads where all three samples agree on the same wrong value.
 - **C — prompt-tune the confidence score**: fights a known-bad signal; a model that reports flat confidence isn't going to be talked into calibration by wording.
-- **D — build a labelled eval set** and measure real per-field accuracy: the *only* path that would genuinely calibrate confidence and refresh `KNOWN_UNRELIABLE_FIELDS` — but it's real work (ties to the "ticket 12/13" note in `page.tsx`), deferred as future work. Approach A is the pragmatic layer that ships now; D is what eventually replaces the hardcoded list.
+- **D — build a labelled eval set** and measure real per-field accuracy: the *only* path that would genuinely calibrate confidence and refresh `KNOWN_UNRELIABLE_FIELDS`. **The harness itself is now built (2026-08-01, `eval/` — see "Accuracy eval harness" below); only the client's labelled set (ticket 12) is still pending.** Approach A is the pragmatic layer that ships now; D (once labels arrive) is what eventually replaces the hardcoded list.
 
-**Accuracy across the four test docs** (`testdoc/`, all `qwen2.5vl:7b`, 2026-07-21): `Handwritten Intake Form v2_removed.pdf` 12/12; `Test Doc 2.pdf` 12/12; `Test Doc 3.pdf` ~9/12 (messy scan); `TestDoc4.pdf` 11/12. The remaining misses are genuine handwriting ambiguity on poor photos (`Arnab`→`AnnaB`, `9`→`7`) — exactly the class of error the human-review dashboard exists to catch, and which the literal-extraction prompt deliberately transcribes faithfully rather than "correcting" into a confident wrong guess.
+**Accuracy across the four test docs** (`testdoc/`, all `qwen2.5vl:7b`, 2026-07-21): `Handwritten Intake Form v2_removed.pdf` 12/12; `Test Doc 2.pdf` 12/12; `Test Doc 3.pdf` ~9/12 (messy scan); `TestDoc4.pdf` 11/12. The remaining misses are genuine handwriting ambiguity on poor photos (`Arnab`→`AnnaB`, `9`→`7`) — exactly the class of error the human-review dashboard exists to catch, and which the literal-extraction prompt deliberately transcribes faithfully rather than "correcting" into a confident wrong guess. **These are eyeballed counts; the `eval/` harness below is what turns them into a repeatable, tracked number.**
+
+### Accuracy eval harness (`eval/`, added 2026-08-01 — ticket 13)
+
+A stdlib-only, one-off script that scores `/extract` against labelled documents, so every prompt/model/DPI change becomes a measured delta instead of a guess. Replaces the "eyeballed on 2–4 docs" numbers above. Full docs in `eval/README.md`; design rationale in `.scratch/phase1-next-steps/issues/13-design-accuracy-eval-harness.md`.
+
+- **Files:** `eval/run_eval.py` (CLI driver: cases → real `/extract` → score → report), `eval/scoring.py` (pure comparison logic: field normalization, exact/near, calibration — no I/O, unit-testable core).
+- **Metrics:** per-field **exact** (after normalizing whitespace/case/accents/currency-grouping punctuation, so `€10,000/-` == `10000`) and **near** (exact, or `difflib` ratio ≥ 0.85 — the "off by one character" class). `is_signed` scored as boolean. Present-vs-missing is scored. Plus a **confidence-calibration table** (accuracy per confidence bucket) that re-tests the "confidence is a dead signal" finding every run.
+- **Tracking:** writes `eval/reports/eval-<model>-<stamp>.json` + appends `eval/reports/history.jsonl`; `--against <prior report>` prints per-field exact deltas.
+- **PII:** `eval/cases/` (labels) and `eval/reports/` are **gitignored** except the synthetic `cases/example.json`. Real client labels never get committed — same rule as `.scratch/`.
+- **Run** (stack must be up so `/extract` answers on `:8000`):
+  ```bash
+  python3 eval/run_eval.py --model-label qwen2.5vl:7b          # score real cases in eval/cases/
+  python3 eval/run_eval.py --include-example --model-label X   # plumbing smoke test, synthetic case only
+  ```
+- **Status:** built + self-tested; a *meaningful* accuracy number is blocked on the client's ground-truth label set (ticket 12). `example.json` is a schema demo with placeholder lower-field values, not verified truth.
 
 ## Performance — CPU-only inference is slow, and why
 

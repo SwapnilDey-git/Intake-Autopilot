@@ -63,9 +63,26 @@ serialization was silently sidestepping, it was built **bounded**:
 **Verification:** `py_compile` clean. Confirmed ai-service targets Python 3.11-slim, where a
 module-level `asyncio.Semaphore()` is safe (the loop-binding footgun was removed in 3.10; the
 host's 3.9 tripped on it during testing but is not the runtime). Cap logic unit-tested: 10
-simultaneous requests → peak concurrent inference = 2 (capped), all complete. NOT yet run
-against the live 3.11 stack end-to-end (needs the stack up — a shared-infra action pending
-user go-ahead).
+simultaneous requests → peak concurrent inference = 2 (capped), all complete.
+
+**Live-verified 2026-07-27 (stack up, real inference).** Brought the full stack up on the Mac
+(`docker compose up -d --build --no-deps postgres n8n backend ai-service`, native Ollama on
+Metal, `qwen2.5vl:7b`), added temporary `[CONCURRENCY-TEST]` logging to `call_model_bounded`
+(active/peak counters + `sem_value` at arrival), fired **5 concurrent** `/extract` calls with a
+real test PDF, then reverted the instrumentation (ai-service `git status` clean afterward). Results:
+- **Cap holds at 2 on the live 3.11 container.** Logs: req#1 ENTER active=1, req#2 ENTER active=2
+  (peak=2); req#3/#4/#5 all logged `awaiting semaphore (sem_value=0)` — correctly **queued, not
+  dropped, not stampeding Ollama**. Every EXIT was immediately followed by exactly one queued
+  request ENTERing; **peak never exceeded 2**. Confirms the module-level `asyncio.Semaphore`
+  actually binds and gates under the real event loop (not just the unit test).
+- **Event loop stays responsive during inference (the "pure win" half).** Polled `/docs` 10× while
+  all 5 inferences were in flight: ~1–6 ms per poll (after the initial upload-read phase). The old
+  accidentally-serialized version would have blocked `/docs` for the full inference — it didn't.
+- **No memory blow-up.** All 5 returned HTTP 200; 32GB ceiling never stressed at cap=2.
+- **The documented `OLLAMA_NUM_PARALLEL` caveat reproduced exactly.** With it unset, completion
+  times staggered (~one inference's worth apart) even though 2 held the semaphore — i.e. extras
+  queued *inside* native Ollama, matching the code comment's "still correct, just serialized there"
+  note. App-side cap is proven; true parallel *throughput* still needs the global opt-in, as documented.
 
 **Trade-off accepted:** more moving parts than the "document only" path, for throughput
 headroom that pilot volume doesn't strictly need yet — but the event-loop-unblocking half is

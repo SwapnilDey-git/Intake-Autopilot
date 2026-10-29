@@ -1,6 +1,14 @@
 # Mac-local override (NOT part of the handoff — machine-specific, gitignore-style local-only).
 # Points ai-service at the host's NATIVE Ollama (Metal GPU) instead of the CPU-only
-# containerized one, and pins the model to qwen2.5vl:7b for this machine.
+# containerized one.
+#
+# 2026-09-03: repointed to minicpm-v (5.5GB) on this machine, a 16GB M1 MacBook Air —
+# this override was inherited from a 32GB M2 Max handoff and its qwen2.5vl:7b pin
+# (~6-8GB weights + KV/image context) leaves too little headroom alongside Docker
+# Desktop's Postgres/n8n/backend/ai-service containers. Revisit once minicpm-v's
+# accuracy is validated on real docs here — qwen2.5vl:7b scored better in RUNNING.md's
+# comparison, so it's worth retrying if 16GB proves to have enough slack.
+# Concurrency dropped to 1 for the same headroom reason (2 was tuned for 32GB).
 #
 # IMPORTANT — do NOT run a bare `docker compose up -d`. Native Ollama already binds host
 # :11434, so starting the containerized `ollama` service would fail with a port conflict.
@@ -14,9 +22,7 @@ services:
   ai-service:
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
-      - MODEL_NAME=qwen2.5vl:7b
-      # Max simultaneous inferences (wayfinder ticket 17). Default is 2 in code; set
-      # here for visibility/tuning. To get ACTUAL parallel throughput, native Ollama
-      # also needs OLLAMA_NUM_PARALLEL >= this (a GLOBAL host setting shared with your
-      # other Mac projects — see RUNNING.md); otherwise extras queue inside Ollama.
-      - AI_MAX_CONCURRENCY=2
+      - MODEL_NAME=minicpm-v
+      # Max simultaneous inferences (wayfinder ticket 17). Kept at 1 on this 16GB
+      # machine — see the headroom note above. Raise once memory pressure is checked.
+      - AI_MAX_CONCURRENCY=1

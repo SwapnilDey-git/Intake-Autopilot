@@ -1,0 +1,1063 @@
+{
+  "name": "Phase 8: Real Intake Flow (Webhook + Gmail + WhatsApp)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "upload-real",
+        "responseMode": "lastNode",
+        "options": {
+          "binaryData": true
+        }
+      },
+      "id": "8a128d16-116c-4927-ba20-02b64bba60ae",
+      "name": "Webhook (Receive File)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -448,
+        96
+      ],
+      "webhookId": "d3a48a53-e6b0-4de2-b13b-888e1cfc6259"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://intake-ai:8000/extract",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 1200000
+        }
+      },
+      "id": "5f39e787-9f78-4b0c-88ca-d1a507a3bcff",
+      "name": "Call AI Service (Docling + Ollama)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -224,
+        96
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO forms (filename, status) VALUES ($1, 'extracted') RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [$node[\"Webhook (Receive File)\"].binary.data.fileName] }}"
+        }
+      },
+      "id": "8831823a-3209-4ec0-bbb7-7e363253f04f",
+      "name": "Insert Form DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO extractions (form_id, json_result, confidence) VALUES ($1, $2, $3);",
+        "options": {
+          "queryReplacement": "={{ [$json.id, JSON.stringify($node[\"Call AI Service (Docling + Ollama)\"].json.fields), JSON.stringify($node[\"Call AI Service (Docling + Ollama)\"].json.confidence)] }}"
+        }
+      },
+      "id": "01846939-59ac-4787-9ecd-dbb33b6a725a",
+      "name": "Insert Extraction DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log (form_id, event_type, actor, details) VALUES ($1, 'extraction', 'n8n', $2);",
+        "options": {
+          "queryReplacement": "={{ [$node[\"Insert Form DB\"].json.id, JSON.stringify($node[\"Call AI Service (Docling + Ollama)\"].json)] }}"
+        }
+      },
+      "id": "0a7a6787-a5e2-467e-931a-3e1d9872fa80",
+      "name": "Insert Audit Log (Extraction)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO forms (filename, status) VALUES ($1, 'failed') RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [$node[\"Webhook (Receive File)\"].binary.data.fileName] }}"
+        }
+      },
+      "id": "bbdf7c5a-3f4f-4aa8-a8c8-bde4a63026ca",
+      "name": "Insert Failed Form DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        192
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log (form_id, event_type, actor, details) VALUES ($1, 'extraction_failed', 'n8n', $2);",
+        "options": {
+          "queryReplacement": "={{ [$node[\"Insert Failed Form DB\"].json.id, JSON.stringify({ error: $node[\"Call AI Service (Docling + Ollama)\"].json.error || 'AI service unavailable after retries' })] }}"
+        }
+      },
+      "id": "588c9a9d-1111-4528-8cca-8d0514267452",
+      "name": "Insert Audit Log (Failure)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        192
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "subject:\"Tax Intake Form Test_Email\" has:attachment (filename:pdf OR filename:jpg OR filename:jpeg OR filename:png) -label:\"Waiting to be Intaked\" -label:\"Intaked\" -label:\"Failed – Needs Review\""
+        },
+        "options": {
+          "dataPropertyAttachmentsPrefixName": "attachment_",
+          "downloadAttachments": true
+        }
+      },
+      "id": "8b8adc4d-3669-41b8-a0ae-2cf10c7d716e",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -448,
+        752
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "SGLUZxEVJC4ye1v1",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "whatsapp-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "90cb567e-8148-41dc-b945-d1e72a272bd7",
+      "name": "WhatsApp Webhook (Verify)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        2128
+      ],
+      "webhookId": "0a4014fa-a2b8-4293-b917-af5669693cd3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "verify-token-match",
+              "leftValue": "={{ $json.query[\"hub.verify_token\"] }}",
+              "rightValue": "={{ $env.WHATSAPP_VERIFY_TOKEN }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7a77b383-4cbb-408e-a11a-b0f9ba3317bd",
+      "name": "Check Verify Token (WhatsApp)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        2128
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query[\"hub.challenge\"] }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "58ae28bb-5b34-4ef5-b7fd-84a305af0bdc",
+      "name": "Respond: Verified (WhatsApp)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        2080
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "Forbidden",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "id": "f1f50af5-fcc2-40af-b39b-9736a52ac879",
+      "name": "Respond: Forbidden (WhatsApp)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        2176
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-inbound",
+        "options": {}
+      },
+      "id": "637b5f6c-01f5-4ff9-ae07-21224097b301",
+      "name": "WhatsApp Webhook (Receive Message)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -672,
+        2336
+      ],
+      "webhookId": "a32174f8-2b4a-4b68-bdde-b95116c61348"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "is-image",
+              "leftValue": "={{ $json.body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.type }}",
+              "rightValue": "image",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "is-document",
+              "leftValue": "={{ $json.body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.type }}",
+              "rightValue": "document",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "41a435cb-c22c-4586-aa1e-8f196eb8050f",
+      "name": "Filter Media Messages (WhatsApp)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// WhatsApp sends the attached photo/PDF as a media ID, not inline bytes\n// (unlike Gmail's downloadAttachments) -- normalize the fields the rest of\n// this branch needs (media_id to fetch, a usable filename, the sender) before\n// the two chained Graph API calls that actually retrieve the file. Only\n// image/document messages reach this node -- status-update webhooks and text\n// messages were already filtered out upstream.\nconst value = $input.first().json.body.entry[0].changes[0].value;\nconst message = value.messages[0];\nconst mediaType = message.type; // 'image' or 'document'\nconst media = message[mediaType];\nconst filename = media.filename || `${message.id}.${mediaType === 'image' ? 'jpg' : 'bin'}`;\nreturn [{\n  json: {\n    media_id: media.id,\n    mime_type: media.mime_type,\n    filename,\n    sender: message.from,\n  },\n}];"
+      },
+      "id": "aed91d32-ddec-48fa-9582-2be0d0428c63",
+      "name": "Extract Media Info (WhatsApp)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        2336
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.media_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "f99859f9-aff3-45b4-9ec9-2eac18876e05",
+      "name": "Get Media URL (WhatsApp)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        96,
+        2336
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Y95ffpYq1xgP0JZC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "553bc404-72b8-4984-bb9f-c6d4abdecb93",
+      "name": "Download Media Bytes (WhatsApp)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        288,
+        2336
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Y95ffpYq1xgP0JZC",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://intake-ai:8000/extract",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 1200000
+        }
+      },
+      "id": "362eb23c-9910-482f-a157-edb7e3c88caf",
+      "name": "Call AI Service (WhatsApp)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        496,
+        2336
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO forms (filename, status) VALUES ($1, 'extracted') RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [$node[\"Extract Media Info (WhatsApp)\"].json.filename] }}"
+        }
+      },
+      "id": "a0565b2a-5b47-4d8c-bb78-802cfee0ef81",
+      "name": "Insert Form DB (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        736,
+        2272
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO extractions (form_id, json_result, confidence) VALUES ($1, $2, $3);",
+        "options": {
+          "queryReplacement": "={{ [$json.id, JSON.stringify($node[\"Call AI Service (WhatsApp)\"].json.fields), JSON.stringify($node[\"Call AI Service (WhatsApp)\"].json.confidence)] }}"
+        }
+      },
+      "id": "5844c75e-41eb-4a02-b804-29a3ff07f752",
+      "name": "Insert Extraction DB (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        944,
+        2272
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log (form_id, event_type, actor, details) VALUES ($1, 'extraction', 'n8n-whatsapp', $2);",
+        "options": {
+          "queryReplacement": "={{ [$node[\"Insert Form DB (WhatsApp)\"].json.id, JSON.stringify($node[\"Call AI Service (WhatsApp)\"].json)] }}"
+        }
+      },
+      "id": "e578eadf-5014-480c-8152-0731c8ab9ee0",
+      "name": "Insert Audit Log (Extraction, WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        1136,
+        2272
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO forms (filename, status) VALUES ($1, 'failed') RETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [$node[\"Extract Media Info (WhatsApp)\"].json.filename] }}"
+        }
+      },
+      "id": "c1440faa-ca16-4488-a0fd-3e63887173d9",
+      "name": "Insert Failed Form DB (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        736,
+        2432
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log (form_id, event_type, actor, details) VALUES ($1, 'extraction_failed', 'n8n-whatsapp', $2);",
+        "options": {
+          "queryReplacement": "={{ [$node[\"Insert Failed Form DB (WhatsApp)\"].json.id, JSON.stringify({ error: $node[\"Call AI Service (WhatsApp)\"].json.error || 'AI service unavailable after retries' })] }}"
+        }
+      },
+      "id": "4deb39c6-90eb-447a-8840-5293b43d6a83",
+      "name": "Insert Audit Log (Failure, WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        944,
+        2432
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO whatsapp_contacts (wa_id) VALUES ($1) ON CONFLICT (wa_id) DO NOTHING;",
+        "options": {
+          "queryReplacement": "={{ [$json.body.entry[0].changes[0].value.messages[0].from] }}"
+        }
+      },
+      "id": "98e391dc-c21a-4485-9eaf-e855d853bf0d",
+      "name": "Mark Seen (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        2180
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Only a genuine inbound TEXT message (a first-contact greeting) should reach\n// the auto-reply path. Drops WhatsApp status-update webhooks (delivery/read\n// receipts carry `statuses`, no `messages`) and any non-text message type.\n// Returning [] stops this branch (no greeting).\nconst value = $input.first().json.body?.entry?.[0]?.changes?.[0]?.value;\nconst message = value?.messages?.[0];\nif (!message || message.type !== 'text') {\n  return [];\n}\nreturn [{ json: { sender: message.from } }];\n"
+      },
+      "id": "b7ea55db-4a9b-43e5-a850-d2d77e927564",
+      "name": "Parse Text Message (WhatsApp)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        2540
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO whatsapp_contacts (wa_id) VALUES ($1) ON CONFLICT (wa_id) DO NOTHING RETURNING wa_id;",
+        "options": {
+          "queryReplacement": "={{ [$json.sender] }}"
+        }
+      },
+      "id": "e9de9c59-1de1-4970-bedb-03bd848f014d",
+      "name": "Upsert Contact (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        96,
+        2540
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// === WhatsApp first-contact greeting — SINGLE SWAPPABLE CONFIG (ticket 20a) ===\n// Swap these constants when the client confirms real copy / the WABA phone id.\n//\n// phone_number_id: the WhatsApp Business phone-number ID (Meta > WhatsApp > API\n// Setup). PLACEHOLDER — set to the test-tier id for verification, the real id\n// only at go-live (gated on Meta Business Verification, ticket 08).\nconst PHONE_NUMBER_ID = 'PLACEHOLDER_PHONE_NUMBER_ID';\n//\n// greeting_text: bilingual German + Romanian. The German half is the REAL copy\n// from production usage (client_reply.md line 10, verbatim). The Romanian half\n// is a PLACEHOLDER — do NOT machine-translate it into live delivery; confirm\n// the real Romanian first-contact copy with the client before go-live.\nconst GREETING_DE = 'Hallo. Bitte reichen Sie Ihre Einkommensteuererklärung ein. Ich sende Ihnen dann das Informationsblatt, die E-Card und den Personalausweis zu. Bitte teilen Sie mir mit, wie hoch die Versandkosten sind. Vielen Dank.';\nconst GREETING_RO = '[RO PLACEHOLDER — Romanian first-contact copy to be confirmed with client before go-live]';\nconst greeting_text = `${GREETING_DE}\\n\\n${GREETING_RO}`;\n\nreturn [{ json: { wa_id: $json.wa_id, phone_number_id: PHONE_NUMBER_ID, greeting_text } }];\n"
+      },
+      "id": "2daa9484-66af-4521-86f2-aa4ddffc9ed6",
+      "name": "WA Greeting Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        2540
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $json.phone_number_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"messaging_product\":\"whatsapp\",\"to\":\"{{ $json.wa_id }}\",\"type\":\"text\",\"text\":{\"body\":{{ JSON.stringify($json.greeting_text) }}}}",
+        "options": {}
+      },
+      "id": "55abeee8-1ca1-4290-8727-fe981bdc9106",
+      "name": "Send Greeting (WhatsApp)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        608,
+        2540
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Y95ffpYq1xgP0JZC",
+          "name": "Header Auth account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE whatsapp_contacts SET greeted_at = now() WHERE wa_id = $1;",
+        "options": {
+          "queryReplacement": "={{ [$node[\"WA Greeting Config\"].json.wa_id] }}"
+        }
+      },
+      "id": "42d54388-ab07-41a5-923c-cceedbcfb85a",
+      "name": "Mark Greeted (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        864,
+        2540
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log (form_id, event_type, actor, details) VALUES (NULL, 'greeting_sent', 'n8n-whatsapp', $1);",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify({ wa_id: $node[\"WA Greeting Config\"].json.wa_id })] }}"
+        }
+      },
+      "id": "c02f4402-27c6-4f1a-91a8-232dac8e5d7f",
+      "name": "Audit Greeting (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        2540
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log (form_id, event_type, actor, details) VALUES (NULL, 'greeting_failed', 'n8n-whatsapp', $1);",
+        "options": {
+          "queryReplacement": "={{ [JSON.stringify({ wa_id: $node[\"WA Greeting Config\"].json.wa_id, error: ($json.error || 'send failed') })] }}"
+        }
+      },
+      "id": "46183823-9621-40fc-9f72-ec02827125a0",
+      "name": "Audit Greeting Failure (WhatsApp)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.2,
+      "position": [
+        864,
+        2680
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w4DRGMH6qN8WExUN",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "id": "build-case-payload-001",
+      "name": "Build Case Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        752
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Build ONE /api/intake/case payload per Gmail message. Each email arrives as a\n// single item carrying its attachments as binary keys (attachment_0, attachment_1,\n// ...). We base64 every attachment and hand the whole set to the backend, which\n// classifies them, files supporting docs, and extracts ONLY the primary tax form\n// (multi-file case grouping, 2026-08-19). Replaces the old per-attachment\n// Split -> Loop -> Call AI fan-out (and the label nodes that blocked intake).\nconst out = [];\nconst items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  const j = items[i].json || {};\n  const bin = items[i].binary || {};\n  const files = [];\n  for (const key of Object.keys(bin)) {\n    const meta = bin[key] || {};\n    const buff = await this.helpers.getBinaryDataBuffer(i, key);\n    files.push({\n      filename: meta.fileName || key,\n      mime: meta.mimeType || null,\n      content_base64: buff.toString('base64'),\n    });\n  }\n  let sender = j.from || null;\n  if (sender && typeof sender === 'object') sender = sender.value || sender.text || null;\n  out.push({ json: {\n    source: 'gmail',\n    external_ref: j.id || j.messageId || null,\n    sender: sender,\n    subject: j.subject || null,\n    files,\n  }});\n}\nreturn out;\n"
+      }
+    },
+    {
+      "id": "ingest-case-gmail-001",
+      "name": "Ingest Case (Gmail)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        96,
+        752
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://intake-backend:8080/api/intake/case",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 120000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook (Receive File)": {
+      "main": [
+        [
+          {
+            "node": "Call AI Service (Docling + Ollama)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call AI Service (Docling + Ollama)": {
+      "main": [
+        [
+          {
+            "node": "Insert Form DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert Failed Form DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Form DB": {
+      "main": [
+        [
+          {
+            "node": "Insert Extraction DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Extraction DB": {
+      "main": [
+        [
+          {
+            "node": "Insert Audit Log (Extraction)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Failed Form DB": {
+      "main": [
+        [
+          {
+            "node": "Insert Audit Log (Failure)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Webhook (Verify)": {
+      "main": [
+        [
+          {
+            "node": "Check Verify Token (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Verify Token (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Respond: Verified (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Forbidden (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Webhook (Receive Message)": {
+      "main": [
+        [
+          {
+            "node": "Filter Media Messages (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Media Messages (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Extract Media Info (WhatsApp)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Mark Seen (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Text Message (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Media Info (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Get Media URL (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Media URL (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Download Media Bytes (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Media Bytes (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Call AI Service (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call AI Service (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Insert Form DB (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert Failed Form DB (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Form DB (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Insert Extraction DB (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Extraction DB (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Insert Audit Log (Extraction, WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Failed Form DB (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Insert Audit Log (Failure, WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Text Message (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Upsert Contact (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Contact (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "WA Greeting Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WA Greeting Config": {
+      "main": [
+        [
+          {
+            "node": "Send Greeting (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Greeting (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Mark Greeted (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Audit Greeting Failure (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Greeted (WhatsApp)": {
+      "main": [
+        [
+          {
+            "node": "Audit Greeting (WhatsApp)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Case Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Case Payload": {
+      "main": [
+        [
+          {
+            "node": "Ingest Case (Gmail)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "id": "intakefull000001",
+  "active": false
+}

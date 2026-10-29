@@ -1,0 +1,6 @@
+# Ground-truth labels reference REAL CLIENT PII (names, e-card/SVNR numbers,
+# addresses, income). Same rule as .scratch/ -- never commit them.
+# Ignore everything here except the synthetic example and this file itself.
+*
+!.gitignore
+!example.json

@@ -1,0 +1,1499 @@
+<!doctype html>
+<html lang="de-AT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Die Steuermappe · Vorbereitung für die Steuerberatung</title>
+<meta name="description" content="Sechzehn einfache Fragen zu Ihrer Arbeit als selbständige Personenbetreuerin in Österreich. Am Ende bekommen Sie ein Blatt für Ihre Steuerberaterin — zum Ausdrucken, Kopieren oder Speichern.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#2E5A44" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1211" media="(prefers-color-scheme: dark)">
+<meta name="robots" content="index, follow">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Die Steuermappe">
+<meta property="og:description" content="Sechzehn Fragen. Am Ende ein Blatt für Ihre Steuerberaterin.">
+<meta property="og:locale" content="de_AT">
+
+<!-- Favicon: inline, kein zusätzlicher Request. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232E5A44'/%3E%3Cpath d='M7 9h8l2 3h8v13H7z' fill='none' stroke='%23F4F6F2' stroke-width='2.2'/%3E%3Cpath d='M11 17h10M11 21h7' stroke='%23F4F6F2' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E">
+
+<!--
+  ─────────────────────────────────────────────────────────────────────────
+  SCHRIFTEN / DSGVO-HINWEIS
+  Die folgenden zwei Zeilen laden die Schriften von Google Fonts. Für den
+  produktiven Betrieb einer österreichischen Website wird empfohlen, die
+  Schriftdateien selbst zu hosten (Google Fonts überträgt die IP-Adresse
+  der Besucherin an einen Drittanbieter — siehe LG München I, 3 O 17493/20).
+
+  Zum Selbsthosten: die drei Familien nach /fonts/ legen, die zwei Zeilen
+  unten löschen und stattdessen @font-face-Regeln in den <style>-Block
+  aufnehmen. Ohne Webfonts fällt das Layout sauber auf Georgia / System-
+  Sans / System-Mono zurück; nichts bricht.
+  ─────────────────────────────────────────────────────────────────────────
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+/* ========================= TOKENS ========================= */
+:root{
+  --paper:#F4F6F2; --sheet:#FFFFFF; --rule:#DBE2DA; --rule-hard:#B9C4BA;
+  --ink:#141A17; --ink-soft:#4A554E; --ink-faint:#78837B;
+  --loden:#2E5A44; --loden-soft:#E3EDE6;
+  --ochre:#9C6B0E; --ochre-soft:#F7EEDB;
+  --brick:#8E3527; --brick-soft:#F7E5E1;
+  --indigo:#2C4C6B; --indigo-soft:#E2EAF1;
+  --shadow:0 1px 2px rgba(20,26,23,.05), 0 10px 26px -14px rgba(20,26,23,.20);
+  --btn-ink:#FFFFFF;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1211; --sheet:#161C1A; --rule:#28312E; --rule-hard:#3B4642;
+    --ink:#E7EBE6; --ink-soft:#A8B3AC; --ink-faint:#7B857F;
+    --loden:#79B495; --loden-soft:#1B2D25;
+    --ochre:#D9A23C; --ochre-soft:#2B2416;
+    --brick:#D08272; --brick-soft:#2E1D1A;
+    --indigo:#8FB4D4; --indigo-soft:#18242F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px -16px rgba(0,0,0,.75);
+    --btn-ink:#0E1211;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1211; --sheet:#161C1A; --rule:#28312E; --rule-hard:#3B4642;
+  --ink:#E7EBE6; --ink-soft:#A8B3AC; --ink-faint:#7B857F;
+  --loden:#79B495; --loden-soft:#1B2D25;
+  --ochre:#D9A23C; --ochre-soft:#2B2416;
+  --brick:#D08272; --brick-soft:#2E1D1A;
+  --indigo:#8FB4D4; --indigo-soft:#18242F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px -16px rgba(0,0,0,.75);
+  --btn-ink:#0E1211;
+}
+
+/* ========================= BASE ========================= */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--paper);color:var(--ink);
+  font-family:"Atkinson Hyperlegible","Segoe UI",system-ui,-apple-system,sans-serif;
+  font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;margin:0;
+  overflow-wrap:break-word}
+img{max-width:100%}
+[hidden]{display:none!important}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px 40px}
+
+.skip{position:absolute;left:-9999px;top:0;background:var(--loden);color:#fff;
+  padding:12px 18px;z-index:100;font-weight:700}
+.skip:focus{left:0}
+
+:where(h1,h2,h3)[tabindex="-1"]{outline:none}
+
+/* ========================= PROGRESS RAIL ========================= */
+.rail{position:sticky;top:0;z-index:20;background:var(--paper);padding:14px 22px 0}
+.rail>*{max-width:760px;margin-inline:auto}
+.rail-bar{height:4px;background:var(--rule);overflow:hidden}
+.rail-fill{height:100%;background:var(--loden);width:0;transition:width .3s ease}
+.rail-meta{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  padding:8px 0 14px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--ink-faint)}
+.rail-meta strong{color:var(--loden);font-weight:600}
+
+/* ========================= MASTHEAD ========================= */
+.mast{border-bottom:2px solid var(--ink);padding:26px 0 12px;margin-bottom:34px}
+.mast .kick{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;font-weight:600;
+  letter-spacing:.15em;text-transform:uppercase;color:var(--loden);margin:0 0 10px}
+h1{font-family:"Source Serif 4",Georgia,serif;font-weight:400;
+  font-size:clamp(2rem,5vw,2.9rem);line-height:1.05;letter-spacing:-.02em;margin:0;text-wrap:balance}
+h1 em{font-style:italic;color:var(--loden)}
+.mast .lang{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-faint);margin:12px 0 0}
+
+.lede{font-size:1.14rem;line-height:1.55;color:var(--ink-soft);margin:0 0 22px;max-width:60ch}
+.lede strong{color:var(--ink);font-weight:700}
+
+.boundary{background:var(--sheet);border:1px solid var(--rule);border-left:3px solid var(--ochre);
+  padding:20px 24px;margin:26px 0}
+.boundary h3{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ochre);margin:0 0 12px;font-weight:600}
+.boundary p{margin:0 0 10px;font-size:.95rem;color:var(--ink-soft)}
+.boundary p:last-child{margin:0}
+.boundary b{color:var(--ink)}
+
+.preview{background:var(--sheet);border:1px solid var(--rule);padding:0;margin:26px 0;box-shadow:var(--shadow)}
+.preview-h{padding:13px 22px;border-bottom:1px solid var(--rule);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-faint)}
+.preview ol{margin:0;padding:16px 22px 18px 42px;font-size:.92rem;color:var(--ink-soft)}
+.preview li{margin-bottom:5px}
+.preview li b{color:var(--ink)}
+
+/* ========================= QUESTION CARD ========================= */
+.qcard{background:var(--sheet);border:1px solid var(--rule);box-shadow:var(--shadow);padding:28px 30px}
+@media(max-width:560px){.qcard{padding:22px 18px}}
+.qsec{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--loden);font-weight:600;margin:0 0 10px}
+h2{font-family:"Source Serif 4",Georgia,serif;font-weight:600;font-size:1.5rem;
+  line-height:1.24;letter-spacing:-.012em;margin:0 0 8px;text-wrap:balance}
+.qhelp{font-size:.95rem;color:var(--ink-soft);margin:0 0 22px;max-width:56ch}
+
+.opts{display:flex;flex-direction:column;gap:10px}
+.opt{background:var(--sheet);border:1.5px solid var(--rule-hard);color:inherit;font:inherit;
+  text-align:left;padding:16px 18px;cursor:pointer;min-height:60px;display:flex;
+  flex-direction:column;justify-content:center;gap:3px;transition:border-color .14s,background .14s}
+.opt:hover{border-color:var(--loden);background:var(--loden-soft)}
+.opt:focus-visible{outline:2px solid var(--loden);outline-offset:2px}
+.opt[aria-pressed="true"]{border-color:var(--loden);background:var(--loden-soft);border-width:2px}
+.opt .lab{font-weight:700;font-size:1.02rem}
+.opt .sub{font-size:.85rem;color:var(--ink-faint)}
+.opt[aria-pressed="true"] .sub{color:var(--ink-soft)}
+
+.chks{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media(max-width:560px){.chks{grid-template-columns:1fr}}
+.chk{background:var(--sheet);border:1.5px solid var(--rule-hard);color:inherit;font:inherit;
+  text-align:left;padding:12px 14px;cursor:pointer;min-height:52px;display:flex;align-items:center;
+  gap:10px;font-size:.93rem;transition:border-color .14s,background .14s}
+.chk:hover{border-color:var(--loden)}
+.chk:focus-visible{outline:2px solid var(--loden);outline-offset:2px}
+.chk .box{width:20px;height:20px;border:1.5px solid var(--rule-hard);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--sheet)}
+.chk[aria-pressed="true"]{border-color:var(--loden);background:var(--loden-soft)}
+.chk[aria-pressed="true"] .box{background:var(--loden);border-color:var(--loden);color:#fff}
+.chk[aria-pressed="true"] .box::after{content:"✓"}
+.maxnote{font-size:.85rem;color:var(--ink-faint);margin:10px 0 0}
+
+/* ========================= REALITY CARD ========================= */
+.reality{margin-top:22px;background:var(--sheet);border:1px solid var(--rule);
+  border-left:4px solid var(--loden);padding:20px 22px}
+.reality.warn{border-left-color:var(--ochre)}
+.reality.urgent{border-left-color:var(--brick)}
+.reality.value{border-left-color:var(--indigo)}
+.reality .tag{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;font-weight:600;color:var(--loden);margin:0 0 9px}
+.reality.warn .tag{color:var(--ochre)}
+.reality.urgent .tag{color:var(--brick)}
+.reality.value .tag{color:var(--indigo)}
+.reality p{font-family:"Source Serif 4",Georgia,serif;font-size:1.03rem;line-height:1.52;
+  margin:0 0 10px;color:var(--ink)}
+.reality p:last-child{margin:0}
+.reality b{font-weight:600}
+
+/* ========================= BUTTONS ========================= */
+.nav{display:flex;gap:12px;align-items:center;margin-top:26px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:700;padding:15px 26px;border:none;cursor:pointer;
+  background:var(--loden);color:var(--btn-ink);min-height:54px;font-size:1rem;
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;text-decoration:none}
+.btn:hover{filter:brightness(1.08)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink-soft);border:1.5px solid var(--rule-hard);font-weight:400}
+.btn.ghost:hover{border-color:var(--ink-faint);filter:none}
+.btn.quiet{background:transparent;color:var(--ink-faint);border:none;font-weight:400;
+  font-size:.9rem;padding:10px 4px;min-height:44px;text-decoration:underline}
+.btn.quiet:hover{color:var(--brick);filter:none}
+.btn svg{width:19px;height:19px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+@media(max-width:560px){
+  .nav{gap:9px}
+  .btn{flex:1 1 100%;padding:15px 18px}
+  .btn.quiet{flex:1 1 100%}
+}
+
+/* ========================= DAS BLATT ========================= */
+.brief{background:var(--sheet);border:1px solid var(--rule-hard);box-shadow:var(--shadow);
+  font-family:"Source Serif 4",Georgia,serif}
+.brief-head{padding:24px 30px 18px;border-bottom:2px solid var(--ink)}
+.brief-head .org{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ink-faint);margin:0 0 10px}
+.brief-head h2{font-size:1.6rem;margin:0 0 4px;font-weight:600}
+.brief-head .sub{font-family:"Atkinson Hyperlegible",sans-serif;font-size:.86rem;
+  color:var(--ink-soft);margin:0}
+.brief-ref{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--rule)}
+.brief-ref div{flex:1 1 33%;min-width:150px;padding:11px 30px;border-right:1px solid var(--rule)}
+.brief-ref div:last-child{border-right:none}
+.brief-ref dt{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:9.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-faint);margin:0 0 3px}
+.brief-ref dd{margin:0;font-size:.98rem;font-weight:600}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.9rem}
+
+.bsec{padding:20px 30px;border-bottom:1px solid var(--rule)}
+.bsec:last-child{border-bottom:none}
+.bsec h3{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-faint);margin:0 0 14px;font-weight:600;
+  display:flex;align-items:baseline;gap:9px}
+.bsec h3 .no{color:var(--loden)}
+@media(max-width:560px){.bsec,.brief-head{padding-left:18px;padding-right:18px}
+  .brief-ref div{padding-left:18px;padding-right:18px}}
+
+.rows{display:grid;grid-template-columns:210px minmax(0,1fr);gap:7px 18px;font-size:.98rem;margin:0}
+@media(max-width:560px){.rows{grid-template-columns:1fr;gap:2px}}
+.rows dt{font-family:"Atkinson Hyperlegible",sans-serif;font-size:.83rem;color:var(--ink-faint)}
+.rows dd{margin:0}
+.stat{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.78rem;font-weight:600;
+  padding:2px 7px;border:1px solid currentColor;letter-spacing:.05em;white-space:nowrap}
+.stat.ok{color:var(--loden)} .stat.no{color:var(--brick)} .stat.unk{color:var(--ochre)}
+
+.flag{display:flex;gap:13px;padding:13px 0;border-bottom:1px dotted var(--rule)}
+.flag:last-child{border-bottom:none}
+.flag .sev{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:9.5px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;padding:3px 7px;height:fit-content;
+  white-space:nowrap;border:1px solid currentColor}
+.flag.urgent .sev{color:var(--brick);background:var(--brick-soft)}
+.flag.warn .sev{color:var(--ochre);background:var(--ochre-soft)}
+.flag.value .sev{color:var(--indigo);background:var(--indigo-soft)}
+.flag .body{flex:1}
+.flag .ttl{font-weight:600;margin:0 0 3px;font-size:1.01rem}
+.flag .dsc{margin:0;font-size:.92rem;color:var(--ink-soft);
+  font-family:"Atkinson Hyperlegible",sans-serif;line-height:1.5}
+
+.qlist{margin:0;padding-left:22px;font-size:1rem}
+.qlist li{margin-bottom:8px}
+.qlist li:last-child{margin-bottom:0}
+
+.docs{display:grid;grid-template-columns:repeat(2,1fr);gap:5px 18px;font-size:.93rem;
+  font-family:"Atkinson Hyperlegible",sans-serif}
+@media(max-width:560px){.docs{grid-template-columns:1fr}}
+.docs span{display:flex;gap:8px;align-items:baseline}
+.docs .m{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.85rem;flex-shrink:0}
+.docs .has .m{color:var(--loden)} .docs .miss .m{color:var(--ochre)}
+.docs .miss{color:var(--ink-faint)}
+
+.brief-foot{padding:18px 30px;background:var(--paper);
+  font-family:"Atkinson Hyperlegible",sans-serif;font-size:.83rem;color:var(--ink-faint)}
+.brief-foot p{margin:0 0 6px;max-width:none}
+.brief-foot p:last-child{margin:0}
+
+/* Notizfeld — nur im Ausdruck */
+.notes{display:none}
+.notes .line{border-bottom:.5pt solid #999;height:9mm}
+.notes .notesref{font-family:"Atkinson Hyperlegible",sans-serif;font-size:8pt;color:#666;
+  margin:0 0 10pt}
+
+.after{margin-top:30px;background:var(--sheet);border:1px solid var(--rule);padding:24px 28px}
+@media(max-width:560px){.after{padding:20px 18px}}
+.after h3{font-family:"Source Serif 4",Georgia,serif;font-size:1.2rem;margin:0 0 12px;font-weight:600}
+.after h3+ul{margin-top:0}
+.after ul{margin:0 0 18px;padding-left:20px;font-size:.96rem;color:var(--ink-soft)}
+.after li{margin-bottom:6px}
+.after b{color:var(--ink)}
+.actions{border-top:1px solid var(--rule);margin-top:22px;padding-top:20px}
+.actions .lbl{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink-faint);margin:0 0 12px}
+
+/* ========================= FOOT / TOAST / NOSCRIPT ========================= */
+.site-foot{border-top:1px solid var(--rule);margin-top:56px;padding:22px 0 30px;
+  font-size:.84rem;color:var(--ink-faint);display:flex;flex-wrap:wrap;gap:8px 22px;
+  align-items:baseline;justify-content:space-between}
+.site-foot a{color:var(--ink-soft)}
+.site-foot .links{display:flex;gap:18px;flex-wrap:wrap}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:var(--ink);
+  color:var(--paper);padding:13px 22px;font-size:.92rem;font-weight:700;z-index:60;
+  opacity:0;pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
+.toast.on{opacity:1}
+
+.noprint-note{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-faint);margin:18px 0 0;text-align:center}
+
+.nojs{background:var(--sheet);border-left:3px solid var(--brick);padding:20px 24px;margin:26px 0}
+.nojs p{margin:0;color:var(--ink-soft)}
+
+/* ========================= DRUCK ========================= */
+@page{size:A4;margin:16mm 15mm 18mm}
+@media print{
+  html,body{background:#fff!important;color:#000!important;font-size:10.5pt}
+  .rail,.mast,.nav,.after,.toast,.noprint-note,.site-foot,.skip,.screen-only,.nojs{display:none!important}
+  .wrap{max-width:none;padding:0;margin:0}
+  .brief{border:none;box-shadow:none;background:#fff}
+  .brief-head{padding:0 0 10pt;border-bottom:1.5pt solid #000}
+  .brief-head h2{font-size:16pt}
+  .brief-head .org,.brief-head .sub{color:#444}
+  .brief-ref{border-bottom:.5pt solid #999}
+  .brief-ref div{padding:7pt 0;border-right:.5pt solid #ccc}
+  .brief-ref div:first-child{padding-left:0}
+  .brief-ref div:not(:first-child){padding-left:10pt}
+  /* Abschnitte dürfen umbrechen; einzelne Einträge nicht, und eine
+     Überschrift bleibt nie allein am Seitenende stehen. */
+  .bsec{padding:12pt 0;border-bottom:.5pt solid #ccc}
+  .bsec h3{color:#444;page-break-after:avoid;break-after:avoid}
+  .bsec h3 .no{color:#000}
+  .rows,.docs{page-break-inside:avoid}
+  .qlist li{page-break-inside:avoid}
+  .flag{page-break-inside:avoid;border-bottom:.4pt dotted #bbb}
+  .flag .dsc,.rows dt,.docs .miss{color:#333}
+  /* Severity-Chips müssen im Ausdruck lesbar bleiben */
+  .flag.urgent .sev{color:#000;background:#fff;border:1pt solid #000;font-weight:700}
+  .flag.warn  .sev{color:#333;background:#fff;border:.6pt solid #666}
+  .flag.value .sev{color:#333;background:#fff;border:.6pt solid #666;font-weight:700}
+  .stat{border:.6pt solid #666;color:#000!important}
+  .stat.no{border-width:1pt;font-weight:700}
+  .brief-foot{background:#fff;padding:10pt 0 0;color:#444;border-top:.5pt solid #ccc}
+  .notes{display:block;page-break-before:always;padding:0}
+  .docs .has .m,.docs .miss .m{color:#000}
+  a{color:#000;text-decoration:none}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* ===== Eingabefelder + Senden ans Steuerbüro (intake-autopilot) ===== */
+.fgrid{display:flex;flex-direction:column;gap:18px}
+.fld label{display:block;font-weight:700;font-size:.98rem;margin:0 0 6px}
+.fld .hint{display:block;font-weight:400;font-size:.85rem;color:var(--ink-faint);margin-top:1px}
+.fld input,.fld select{width:100%;font:inherit;color:var(--ink);background:var(--sheet);
+  border:1.5px solid var(--rule-hard);padding:13px 14px;min-height:52px;border-radius:0}
+.fld input:focus-visible,.fld select:focus-visible{outline:2px solid var(--loden);outline-offset:1px;border-color:var(--loden)}
+.fld.bad input{border-color:var(--brick)}
+.fld .err{color:var(--brick);font-size:.85rem;margin:5px 0 0}
+.sendbox{margin:0 0 26px;padding:18px 20px;background:var(--sheet);border:1px solid var(--rule);border-left:4px solid var(--loden)}
+.sendbox.err{border-left-color:var(--brick)}
+.sendbox p{margin:0 0 4px}
+.sendbox .nav{margin-top:14px}
+</style>
+</head>
+<body>
+
+<a class="skip" href="#app">Zum Fragebogen springen</a>
+
+<div class="rail screen-only" id="rail" hidden>
+  <div class="rail-bar"><div class="rail-fill" id="railFill"></div></div>
+  <div class="rail-meta">
+    <span id="railSec">—</span>
+    <span>Frage <strong id="railN">0</strong> von <span id="railTot">16</span></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <header class="mast screen-only" id="mast">
+    <p class="kick" id="mastKick">Personenbetreuung in Österreich</p>
+    <h1>Die <em>Steuermappe</em></h1>
+    <p class="lang">Einfaches Deutsch · Österreichisches Recht · Zahlen Stand 2026 · rumänische Fassung folgt</p>
+  </header>
+
+  <noscript>
+    <div class="nojs">
+      <p><b>Für diese Seite muss JavaScript eingeschaltet sein.</b> Ihre Antworten
+      gehen nur an Ihr Steuerbüro.
+      Wenn Sie JavaScript nicht einschalten können, rufen Sie uns an: wir gehen die Fragen
+      mit Ihnen am Telefon durch.</p>
+    </div>
+  </noscript>
+
+  <main id="app"></main>
+
+  <footer class="site-foot screen-only" id="siteFoot"></footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KONFIGURATION — das Einzige, was beim Einbau angepasst werden muss.
+   ═══════════════════════════════════════════════════════════════════════ */
+/* Vom Steuerbüro geöffnet: /fragebogen?client=<id>&year=<jahr>. Die Antworten
+   gehen per POST an das Büro-Backend (gleicher Rechner), nicht ins Internet. */
+const URLQ = new URLSearchParams(location.search);
+const CLIENT_ID = (URLQ.get("client") || "").replace(/\D/g, "");
+const URL_YEAR  = (URLQ.get("year") || URLQ.get("y") || "").replace(/\D/g, "").slice(0, 4);
+/* Persönlicher Link vom Büro: ?r=<Kennnummer>&y=<Jahr>. Kein Name, keine Daten in der URL. */
+const INVITE_REF = (URLQ.get("r") || "").toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24);
+/* Büro-Modus: die Seite kommt vom Büro-Rechner selbst -> Antworten direkt dorthin schicken.
+   Öffentlich (z. B. Vercel): es wird NICHTS an einen Server geschickt; die Antworten stecken
+   im PDF, das die Klientin per WhatsApp oder E-Mail ans Büro schickt. */
+const SEND_ENABLED = /^https?:$/.test(location.protocol) &&
+  (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || !!CLIENT_ID);
+const PDF_MARK = "STEUERMAPPE1:";
+
+const CFG = {
+  org:        "",
+  brand:      "Personenbetreuung in Österreich",
+  briefOrg:   "",
+  mailTo:     "",                       // E-Mail-Adresse — leer = Button versteckt
+  phone:      "",                       // z. B. "+43 1 234 5678" — leer = Zeile versteckt
+  impressum:  "",
+  datenschutz:"",
+  roVersion:  "",                       // URL der rumänischen Fassung, sobald vorhanden
+  year:       2026,
+  api:        ""                        // Büro-Backend; "" = derselbe Rechner, der diese Seite ausliefert
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INHALT
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const SECTIONS = {
+  S:"Ihre Daten", A:"Ihre Anmeldungen", B:"Ihre Arbeit", C:"Geld", D:"Wo Sie wohnen",
+  E:"Ihre Familie", F:"Was bisher war", G:"Ihre Unterlagen", H:"Ihre Sorgen"
+};
+
+const YEAR_OPTS = (()=>{ const y = new Date().getFullYear(); return [y-1, y-2, y-3, y-4, y-5, y].map(String); })();
+
+/* Seiten mit Eingabefeldern. Die Schlüssel (k) sind die Feldnamen der EA-Rechnung
+   im Büro-Backend — was hier steht, muss dort nicht mehr aus Dokumenten gelesen werden. */
+const Q = [
+  { id:"_person", sec:"S", kind:"fields", q:"Wer sind Sie?",
+    help:"Damit Ihre Antworten bei Ihren Unterlagen landen. Schreiben Sie, was Sie wissen — leere Felder sind in Ordnung.",
+    fields:[
+      {k:"year", lab:"Für welches Steuerjahr?", type:"select", opts:YEAR_OPTS, req:true},
+      {k:"name", lab:"Vor- und Nachname", hint:"So wie im Reisepass", req:true, ac:"name"},
+      {k:"e_card_number", lab:"Sozialversicherungsnummer", hint:"10 Ziffern — steht auf der e-card", type:"digits", len:10, ac:"off"},
+      {k:"stnr", lab:"Steuernummer", hint:"Vom Finanzamt, zum Beispiel 12 345/6789", ac:"off"},
+      {k:"tel", lab:"Telefon", type:"tel", ac:"tel"},
+      {k:"email", lab:"E-Mail", type:"email", ac:"email"}
+    ]},
+
+  { id:"years", sec:"A", q:"Wie lange arbeiten Sie schon als Betreuerin in Österreich?",
+    help:"Ungefähr reicht.",
+    opts:[
+      {v:"first", lab:"Das ist mein erstes Jahr", r:"firstyear"},
+      {v:"1to3", lab:"Ein bis drei Jahre", r:"early"},
+      {v:"3to10", lab:"Drei bis zehn Jahre"},
+      {v:"10plus", lab:"Mehr als zehn Jahre"}
+    ]},
+
+  { id:"gewerbe", sec:"A", q:"Haben Sie einen Gewerbeschein für Personenbetreuung?",
+    help:"Das ist die Anmeldung, die Ihre Arbeit erlaubt. Vielleicht hat die Agentur das für Sie gemacht.",
+    opts:[
+      {v:"yes", lab:"Ja"},
+      {v:"no", lab:"Nein", r:"gewerbe"},
+      {v:"unknown", lab:"Ich weiß es nicht", sub:"Die Agentur hat sich darum gekümmert", r:"gewerbe"}
+    ]},
+
+  { id:"svs", sec:"A", q:"Sind Sie bei der SVS angemeldet?",
+    help:"Die SVS ist die Sozialversicherung für Selbständige. Von dort kommen Briefe.",
+    opts:[
+      {v:"yes", lab:"Ja — ich bekomme Briefe von der SVS"},
+      {v:"no", lab:"Nein", r:"svs"},
+      {v:"unknown", lab:"Ich weiß es nicht", r:"svs"}
+    ]},
+
+  { id:"steuernr", sec:"A", q:"Haben Sie eine österreichische Steuernummer?",
+    help:"Die kommt vom Finanzamt. Sie haben dazu einen Brief bekommen.",
+    opts:[
+      {v:"yes", lab:"Ja"},
+      {v:"no", lab:"Nein"},
+      {v:"unknown", lab:"Ich weiß es nicht"}
+    ]},
+
+  { id:"channel", sec:"B", q:"Wie kommen Sie zu Ihrer Arbeit?",
+    opts:[
+      {v:"agency", lab:"Über eine Agentur", sub:"Eine Agentur vermittelt mich", r:"agency"},
+      {v:"direct", lab:"Direkt zu den Familien"},
+      {v:"both", lab:"Beides", r:"agency"}
+    ]},
+
+  { id:"households", sec:"B", q:"In wie vielen Haushalten haben Sie in den letzten zwölf Monaten gearbeitet?",
+    opts:[
+      {v:"one", lab:"Nur in einem", r:"onehh"},
+      {v:"two3", lab:"In zwei oder drei"},
+      {v:"four", lab:"In vier oder mehr"}
+    ]},
+
+  { id:"_travel", sec:"B", kind:"fields", q:"Ihre Fahrten zur Arbeit",
+    help:"Für die Reisekosten. Gemeint ist die Strecke von Ihrem Zuhause in Rumänien bis zum Haus der Klientin.",
+    fields:[
+      {k:"travel_distance_km", lab:"Wie viele Kilometer ist eine Strecke?", hint:"Nur hin, nicht hin und zurück. Ungefähr reicht.", type:"num"},
+      {k:"trip_count", lab:"Wie oft sind Sie in diesem Jahr hin- und zurückgefahren?", hint:"Die Zahl der Turnusse, zum Beispiel 6", type:"num"}
+    ]},
+
+  { id:"income", sec:"C", q:"Wie viel haben Sie im letzten ganzen Jahr in Rechnung gestellt?",
+    help:"Ungefähr reicht. Die genaue Zahl braucht jetzt niemand.",
+    opts:[
+      {v:"u6600", lab:"Weniger als 6.600 €", r:"inc_low"},
+      {v:"6600_13539", lab:"6.600 € bis 13.539 €", r:"inc_mid"},
+      {v:"13539_30000", lab:"13.539 € bis 30.000 €", r:"inc_tax"},
+      {v:"30000_55000", lab:"30.000 € bis 55.000 €", r:"inc_tax"},
+      {v:"o55000", lab:"Mehr als 55.000 €", r:"inc_vat"},
+      {v:"unknown", lab:"Ich weiß es nicht", r:"inc_unknown"}
+    ]},
+
+  { id:"nachbem", sec:"C", q:"Haben Sie schon einmal eine große, unerwartete Rechnung von der SVS bekommen?",
+    opts:[
+      {v:"yes", lab:"Ja", sub:"Für ein Jahr, das schon lange vorbei war", r:"nb_yes"},
+      {v:"no", lab:"Nein, noch nicht", r:"nb_no"},
+      {v:"unknown", lab:"Ich weiß es nicht", r:"nb_no"}
+    ]},
+
+  { id:"home", sec:"D", q:"Wo haben Sie eine Wohnung oder ein Zimmer für sich?",
+    help:"Nicht wo Sie heute schlafen. Wo ein Platz für Sie da ist.",
+    opts:[
+      {v:"ro_only", lab:"Nur in Rumänien", sub:"In Österreich wohne ich im Haus der Klientin", r:"res"},
+      {v:"client", lab:"Nur im Haus der Klientin", sub:"Sonst habe ich nirgends eine Wohnung", r:"res"},
+      {v:"both", lab:"In Rumänien und in Österreich", sub:"In Österreich habe ich etwas Eigenes", r:"res"},
+      {v:"at_only", lab:"Nur in Österreich", r:"res"}
+    ]},
+
+  { id:"centre", sec:"D", q:"Wo ist der Mittelpunkt von Ihrem Leben?",
+    help:"Familie, Zuhause, wohin Sie zurückkommen.",
+    opts:[
+      {v:"ro", lab:"In Rumänien"},
+      {v:"at", lab:"In Österreich"},
+      {v:"split", lab:"Wirklich in beiden Ländern", r:"centre_split"}
+    ]},
+
+  { id:"_address", sec:"D", kind:"fields", q:"Ihre Adressen",
+    fields:[
+      {k:"address_austria", lab:"Adresse in Österreich", hint:"Wo Sie arbeiten, meist das Haus der Klientin: Straße, Nummer, PLZ, Ort", ac:"off"},
+      {k:"hometown", lab:"Ihre Adresse in Rumänien", hint:"Straße, Nummer, Ort, Kreis", ac:"off"}
+    ]},
+
+  { id:"children", sec:"E", q:"Haben Sie Kinder unter 18? Oder Kinder unter 24, die noch in Ausbildung sind?",
+    opts:[
+      {v:"ro", lab:"Ja — sie leben in Rumänien", r:"kids_ro"},
+      {v:"at", lab:"Ja — sie leben in Österreich"},
+      {v:"split", lab:"Ja — in beiden Ländern", r:"kids_ro"},
+      {v:"no", lab:"Nein"}
+    ]},
+
+  { id:"famben", sec:"E", q:"Bekommen Sie schon österreichische Familienbeihilfe für Ihre Kinder?",
+    help:"Oder eine Ausgleichszahlung. Wenn das für Sie nicht passt: einfach weiter.",
+    skipIf:(s)=>s.children==="no",
+    opts:[
+      {v:"yes", lab:"Ja"},
+      {v:"no", lab:"Nein", r:"fb_no"},
+      {v:"unknown", lab:"Ich weiß es nicht", r:"fb_no"},
+      {v:"na", lab:"Das passt für mich nicht"}
+    ]},
+
+  { id:"_family", sec:"E", kind:"fields", q:"Ihre Familie, für die Steuer",
+    fields:[
+      {k:"marital_status", lab:"Familienstand", type:"select",
+       opts:["","ledig","verheiratet","eingetragene Partnerschaft","Lebensgemeinschaft","geschieden","verwitwet"]},
+      {k:"spouse", lab:"Name von Ehemann oder Ehefrau", ac:"off",
+       showIf:f=>f.marital_status==="verheiratet"||f.marital_status==="eingetragene Partnerschaft"},
+      {k:"children", lab:"Wie viele Kinder unter 18 oder in Ausbildung?", type:"num",
+       showIf:()=>!!state.children && state.children!=="no"}
+    ]},
+
+  { id:"filed", sec:"F", q:"Haben Sie schon einmal eine österreichische Steuererklärung abgegeben?",
+    help:"Sie heißt Einkommensteuererklärung.",
+    opts:[
+      {v:"every", lab:"Ja — jedes Jahr"},
+      {v:"some", lab:"In manchen Jahren, nicht in allen", r:"filed_gap"},
+      {v:"never", lab:"Noch nie", r:"filed_never"},
+      {v:"unknown", lab:"Ich weiß es nicht", r:"filed_gap"}
+    ]},
+
+  { id:"letters", sec:"F", q:"Haben Sie Briefe von der SVS oder vom Finanzamt, die noch offen sind?",
+    help:"Ungeöffnet oder noch nicht erledigt.",
+    opts:[
+      {v:"none", lab:"Nein — ich mache alle auf und erledige sie"},
+      {v:"some", lab:"Ein paar habe ich noch nicht erledigt", r:"let_some"},
+      {v:"mahnung", lab:"Ja — und auf manchen steht Mahnung oder Rückstand", r:"let_mahn"}
+    ]},
+
+  { id:"docs", sec:"G", multi:true, q:"Was von diesen Sachen haben Sie? Irgendwo, in jedem Zustand.",
+    help:"Tippen Sie alles an, was Sie finden könnten. Ein Foto am Handy zählt auch.",
+    opts:[
+      {v:"gewerbeschein", lab:"Gewerbeschein"},
+      {v:"steuernr", lab:"Brief mit der Steuernummer"},
+      {v:"vorschreibung", lab:"SVS-Vorschreibungen"},
+      {v:"nachbem", lab:"Eine SVS-Nachbemessung"},
+      {v:"bescheid", lab:"Einkommensteuerbescheid"},
+      {v:"agencyc", lab:"Vertrag mit der Agentur"},
+      {v:"agencys", lab:"Abrechnungen der Agentur"},
+      {v:"honorar", lab:"Honorarnoten von mir"},
+      {v:"bank", lab:"Kontoauszüge"},
+      {v:"travel", lab:"Belege von Fahrten"},
+      {v:"ecard", lab:"e-card"},
+      {v:"meldezettel", lab:"Meldezettel"},
+      {v:"a1", lab:"A1-Bescheinigung"},
+      {v:"ro_tax", lab:"Steuerpapiere aus Rumänien"}
+    ]},
+
+  { id:"worry", sec:"H", multi:true, max:3, q:"Was macht Ihnen am meisten Sorgen?",
+    help:"Bis zu drei auswählen. Die kommen oben auf das Blatt.",
+    opts:[
+      {v:"amount", lab:"Ich weiß nicht, ob ich das Richtige zahle"},
+      {v:"bill", lab:"Ich habe eine Rechnung, die ich nicht zahlen kann"},
+      {v:"mustfile", lab:"Ich weiß nicht, ob ich etwas abgeben muss"},
+      {v:"owed", lab:"Ich glaube, mir steht Geld zu"},
+      {v:"pension", lab:"Meine Pension — Rumänien und Österreich zusammen"},
+      {v:"kids", lab:"Geld für meine Kinder"},
+      {v:"legal", lab:"Ob meine Situation überhaupt richtig angemeldet ist"},
+      {v:"health", lab:"Meine Krankenversicherung in beiden Ländern"}
+    ]}
+];
+
+const REALITY = {
+  firstyear:{k:"", t:"Die ersten zwei Jahre sind billiger", b:[
+    "In den ersten zwei Kalenderjahren zahlen Sie weniger an die SVS. Das ist ein Startpreis. So viel kostet diese Arbeit nicht wirklich.",
+    "Wenn die zwei Jahre vorbei sind, wird der Betrag höher. Gut, wenn Sie das jetzt schon wissen und nicht erst in zwanzig Monaten."]},
+
+  early:{k:"warn", t:"Jetzt kommt meistens die Nachrechnung", b:[
+    "Zwischen dem ersten und dem dritten Jahr kommt meistens die erste <b>Nachbemessung</b>. Das ist die Rechnung, die kommt, sobald Ihr Steuerbescheid bei der SVS ankommt. Mehr dazu beim Thema Geld."]},
+
+  gewerbe:{k:"warn", t:"Der Gewerbeschein läuft auf Ihren Namen", b:[
+    "Vielleicht hat die Agentur den <b>Gewerbeschein</b> für Sie gemacht. Er läuft aber auf <b>Ihren</b> Namen. Sie sind dafür verantwortlich: für die Beiträge, für die Steuererklärung, für alles.",
+    "Wenn Sie nicht sicher sind, ob es ihn gibt oder ob alles richtig eingetragen ist, gehört das ganz nach oben auf Ihre Liste."]},
+
+  svs:{k:"warn", t:"Mit Gewerbeschein sind Sie versichert — auch ohne Briefe", b:[
+    "Wenn es den Gewerbeschein gibt, sind Sie automatisch bei der SVS. Auch dann, wenn nie ein Brief bei Ihnen angekommen ist. Die Beiträge laufen trotzdem weiter.",
+    "Fragen Sie nach: Bin ich angemeldet? Und ist meine Adresse richtig? Das ist schnell erledigt und gehört an den Anfang."]},
+
+  agency:{k:"", t:"Die Agentur ist nicht Ihre Chefin", b:[
+    "Eine Agentur sucht Arbeit für Sie und nimmt dafür Geld. Sie ist nicht Ihre Arbeitgeberin. Sie zahlt für Sie keine Steuern und keine Beiträge.",
+    "Was die Agentur Ihnen abzieht, ist eine Ausgabe von Ihrem Betrieb. Schauen Sie sich die Abrechnung mit jemandem genau an, Zeile für Zeile."]},
+
+  onehh:{k:"warn", t:"Nur ein Haushalt — das ist eine Frage wert", b:[
+    "Wenn Sie lange nur für einen Haushalt arbeiten und nach deren Zeitplan, dann kann die Frage kommen, ob Sie wirklich selbständig sind. Das nennt man <b>Scheinselbständigkeit</b>.",
+    "Diese Frage ist in dieser Branche echt, und sie hat Folgen in beide Richtungen. <b>Beantworten Sie sie nicht selbst.</b> Das ist eine der besten Fragen für die Steuerberaterin."]},
+
+  inc_low:{k:"", t:"Unter der Mindestgrundlage", b:[
+    "Etwa 6.600 € im Jahr ist die <b>Mindestbeitragsgrundlage</b> bei der SVS. Darunter gelten eigene Regeln.",
+    "Fragen Sie: Wie viel muss ich bei diesem Einkommen wirklich zahlen? Die Antwort ist nicht immer die, die man erwartet."]},
+
+  inc_mid:{k:"", t:"Beiträge ja, Steuer wahrscheinlich nicht", b:[
+    "Sie sind über der SVS-Grenze, aber unter der Steuergrenze. Die liegt 2026 bei 13.539 € und ändert sich jedes Jahr im Jänner.",
+    "Das heißt nicht, dass Sie nichts abgeben müssen. Fragen Sie: Brauche ich trotzdem eine Steuererklärung?"]},
+
+  inc_tax:{k:"", t:"Sie sind über der Steuergrenze", b:[
+    "Über 13.539 € (Stand 2026) müssen Sie eine <b>Einkommensteuererklärung</b> abgeben.",
+    "Wenn Sie das bisher nicht gemacht haben: Sagen Sie es beim Termin offen. Das kommt oft vor, und es gibt normale Wege."]},
+
+  inc_vat:{k:"warn", t:"Vielleicht sind Sie über der Umsatzsteuer-Grenze", b:[
+    "Über 55.000 € Umsatz gilt die <b>Kleinunternehmerregelung</b> nicht mehr. Dann ändert sich, was Sie verrechnen und was Sie abgeben müssen.",
+    "Sagen Sie das gleich am Anfang vom Termin. So etwas wird teuer, wenn man es spät merkt."]},
+
+  inc_unknown:{k:"warn", t:"Auch das ist eine wichtige Antwort", b:[
+    "Wenn Sie nicht sagen können, wie viel Sie verrechnet haben, weiß die Steuerberaterin, wo sie anfängt: bei den Kontoauszügen, nicht bei den Papieren.",
+    "Das ist ein ganz normaler Start. Lassen Sie sich davon nicht vom Termin abhalten."]},
+
+  nb_yes:{k:"warn", t:"Das war die Nachbemessung", b:[
+    "Die SVS schreibt Ihnen zuerst <b>vorläufige Beiträge</b> vor. Später rechnet sie neu — sobald Ihr Einkommensteuerbescheid bei ihr ankommt. Das dauert meistens ein bis zwei Jahre. Die Differenz kommt dann als Rechnung.",
+    "<b>Das kommt wieder</b>, für jedes Jahr, das neu gerechnet wird.",
+    "Wenn Sie eine Rechnung nicht auf einmal zahlen können: Eine <b>Ratenzahlung</b> ist ganz normal und wird fast immer bewilligt. Aber Sie müssen darum bitten."]},
+
+  nb_no:{k:"warn", t:"Sie kommt wahrscheinlich noch", b:[
+    "Die SVS schreibt Ihnen <b>vorläufige Beiträge</b> vor, während Sie arbeiten. Später rechnet sie neu, sobald Ihr Steuerbescheid bei ihr ankommt. Meistens ein bis zwei Jahre nach dem Jahr, um das es geht.",
+    "Wenn Sie mehr verdient haben als angenommen, kommt eine Rechnung über die Differenz. <b>Sie kommt für Geld, das Sie vor zwei Jahren verdient und längst ausgegeben haben.</b> Das ist kein Fehler und nichts Besonderes.",
+    "Fragen Sie Ihre Steuerberaterin: Wie viel soll ich dafür zur Seite legen? Diese Frage kommt zuerst."]},
+
+  res:{k:"warn", t:"Das entscheidet, wo Sie Steuern zahlen — und wird oft falsch beantwortet", b:[
+    "In Österreich gilt: Das Haus der Person, die Sie betreuen, ist Ihre <b>Betriebsstätte</b>. Auch ein Zimmer, das immer für Sie bereitsteht, kann ein <b>Wohnsitz</b> sein.",
+    "Ob Sie deshalb in Österreich <b>unbeschränkt</b> steuerpflichtig sind — also mit allem, was Sie weltweit verdienen — oder nur <b>beschränkt</b>, und wie das Abkommen zwischen Österreich und Rumänien dabei gilt: das muss eine Fachfrau entscheiden.",
+    "<b>Nehmen Sie nichts an.</b> Erzählen Sie genau, wie und wo Sie wohnen. Entscheiden lassen Sie die Steuerberaterin."]},
+
+  centre_split:{k:"warn", t:"Ein Leben in zwei Ländern muss man genau erzählen", b:[
+    "Wo der <b>Mittelpunkt Ihrer Lebensinteressen</b> ist, ist eine der Fragen, wenn zwei Länder Steuern wollen. Bei Turnusarbeit ist das oft wirklich unklar.",
+    "Nehmen Sie die Details mit: wie viele Wochen in welchem Land, wo Ihre Familie ist, wo Ihre Sachen sind."]},
+
+  kids_ro:{k:"value", t:"Das ist vielleicht das Wichtigste auf dieser Seite", b:[
+    "Wenn Sie in Österreich arbeiten — <b>angestellt oder selbständig</b> — und Ihre Kinder leben in einem anderen EU-Land, dann zahlt Österreich unter Umständen die Differenz. Nämlich dann, wenn die österreichische Familienbeihilfe höher ist als das, was das Land Ihrer Kinder zahlt. Das heißt <b>Ausgleichszahlung</b>.",
+    "Die österreichische Familienbeihilfe ist deutlich höher als die rumänische. Die Differenz ist oft jeden Monat spürbar viel Geld.",
+    "<b>Viele holen sich das nie.</b> Manchmal geht es auch rückwirkend. Fragen Sie ausdrücklich danach — mit genau diesem Wort."]},
+
+  fb_no:{k:"value", t:"Dann fragen Sie danach — mit dem richtigen Wort", b:[
+    "Schreiben Sie auf Ihre Liste: <b>Familienbeihilfe — Ausgleichszahlung für Kinder im EU-Ausland</b>. Nehmen Sie die Geburtsurkunden Ihrer Kinder mit, und was Rumänien zahlt oder abgelehnt hat.",
+    "Selbständig zu sein schließt Sie nicht aus. Genau das denken die meisten — und fragen deshalb gar nicht erst."]},
+
+  filed_never:{k:"warn", t:"Nichts abgeben heißt nicht, dass es erledigt ist", b:[
+    "Die SVS kann Ihre Beiträge nicht endgültig ausrechnen. Sie braucht dafür Ihren Steuerbescheid. Solange Sie nichts abgeben, bleibt alles <b>vorläufig</b> — jahrelang.",
+    "Es kann auch sein, dass Ihnen Geld zusteht, das niemand abholt.",
+    "Wenn mehrere Jahre offen sind: Sagen Sie das beim Termin ganz offen. Das kommt häufig vor, und es gibt normale Wege."]},
+
+  filed_gap:{k:"warn", t:"Schreiben Sie vorher auf, welche Jahre fehlen", b:[
+    "Notieren Sie, welche Jahre Sie abgegeben haben und welche nicht. Mit einer unvollständigen Liste kann eine Steuerberaterin viel schneller arbeiten als mit einer unsicheren."]},
+
+  let_some:{k:"warn", t:"Ungeöffnete Briefe halten keine Frist auf", b:[
+    "Nehmen Sie die Briefe ungeöffnet mit, wenn Ihnen das leichter fällt. Aber nehmen Sie alle mit.",
+    "Die Steuerberaterin sortiert das in ein paar Minuten. Sie machen sich sonst wochenlang Sorgen."]},
+
+  let_mahn:{k:"urgent", t:"Das zuerst", b:[
+    "Eine <b>Mahnung</b> heißt: Eine Zahlung ist überfällig, und es kommen Gebühren dazu. Hier ist Zeit wirklich wichtig — anders als beim Rest auf dieser Seite.",
+    "<b>Eine Ratenzahlung ist ganz normal und wird fast immer bewilligt.</b> Darum zu bitten ist viel besser, als nichts zu tun. Nichts tun macht aus einer Rechnung, die man schaffen kann, eine, die man nicht mehr schafft.",
+    "Machen Sie den Termin bald. Und sagen Sie schon am Telefon, dass Sie eine Mahnung haben."]}
+};
+
+const DOC_LABELS = {};
+Q.find(x=>x.id==="docs").opts.forEach(o=>DOC_LABELS[o.v]=o.lab);
+const FIELD_DEFS = [];
+Q.filter(x=>x.kind==="fields").forEach(x=>x.fields.forEach(f=>FIELD_DEFS.push(f)));
+const WORRY_LABELS = {};
+Q.find(x=>x.id==="worry").opts.forEach(o=>WORRY_LABELS[o.v]=o.lab);
+
+/* ═══════════════════════════════════════════════════════════════════════
+   STATE — ausschließlich localStorage, nichts verlässt den Browser
+   ═══════════════════════════════════════════════════════════════════════ */
+const KEY = "steuermappe.de.v1" + (CLIENT_ID ? ".c" + CLIENT_ID : "") + (INVITE_REF ? "." + INVITE_REF : "");
+let state = {};
+let idx = -1;
+let savedIdx = 0;
+
+try {
+  const raw = localStorage.getItem(KEY);
+  if(raw){ const p = JSON.parse(raw); state = p.state || {}; savedIdx = p.idx || 0; }
+} catch(e){ /* Private-Mode o. Ä. — die Seite funktioniert trotzdem, nur ohne Merken */ }
+
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify({state, idx:Math.max(0,idx), t:Date.now()})); }
+  catch(e){}
+}
+function wipe(){
+  try { localStorage.removeItem(KEY); } catch(e){}
+  state = {}; savedIdx = 0;
+}
+function visible(){ return Q.filter(q => !q.skipIf || !q.skipIf(state)); }
+
+const app  = document.getElementById("app");
+const mast = document.getElementById("mast");
+const rail = document.getElementById("rail");
+const BASE_TITLE = document.title;
+
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   RENDER
+   ═══════════════════════════════════════════════════════════════════════ */
+function render(){
+  document.title = BASE_TITLE;
+  if(idx < 0) return renderIntro();
+  const vis = visible();
+  if(idx >= vis.length) return renderBrief();
+  renderQuestion(vis[idx], vis);
+}
+
+function renderIntro(){
+  rail.hidden = true; mast.hidden = false;
+  const resumable = Object.keys(state).length > 0;
+  app.innerHTML = `
+    <p class="lede">${visible().length} Fragen zu Ihrer Arbeit in Österreich. Am Ende bekommen Sie ein Blatt Papier
+    für Ihre Steuerberaterin — <strong>damit die Stunde bei ihr für Antworten draufgeht und nicht
+    für das Sortieren von Zetteln.</strong></p>
+
+    <div class="boundary">
+      <h3>Was diese Seite macht — und was nicht</h3>
+      <p>Diese Seite sagt Ihnen <b>nicht</b>, wie viel Sie zahlen müssen. Sie sagt Ihnen auch nicht,
+      was Sie absetzen können. Das kann sie nicht: Ihre Situation ist Ihre eigene, und manches
+      davon ist wirklich schwierig.</p>
+      <p>Was sie macht: Sie erklärt, was gerade mit Ihnen passiert. Sie findet heraus, welche Fragen
+      <b>bei Ihnen</b> wichtig sind. Und sie schreibt diese Fragen auf — in einer Reihenfolge, mit der
+      eine Fachfrau arbeiten kann. Die Antworten bekommen Sie von der Steuerberaterin.</p>
+      <p>Alle Zahlen sind Stand ${CFG.year}. Sie ändern sich jedes Jahr im Jänner.</p>
+    </div>
+
+    <div class="preview">
+      <div class="preview-h">Das haben Sie am Ende in der Hand</div>
+      <ol>
+        <li><b>Ihre Situation</b> — wie lange, wie Sie arbeiten, wie viele Haushalte</li>
+        <li><b>Ihre Anmeldungen</b> — Gewerbe, SVS, Steuernummer: bestätigt oder offen</li>
+        <li><b>Fragen, die nur eine Fachfrau beantworten kann</b></li>
+        <li><b>Wichtige Punkte</b> — was eilig ist, was zu prüfen ist, wo Geld für Sie da sein könnte</li>
+        <li><b>Ihre Unterlagen</b> — was Sie haben und was Sie noch suchen sollten</li>
+        <li><b>Ihre Fragen</b>, in der Reihenfolge zum Fragen</li>
+      </ol>
+    </div>
+
+    <div class="nav">
+      <button class="btn" id="start" type="button">${resumable ? "Weitermachen" : "Starten"}</button>
+      ${resumable ? '<button class="btn ghost" id="restart" type="button">Neu beginnen</button>' : ""}
+    </div>
+    <p class="noprint-note">Dauert etwa zehn Minuten · ${SEND_ENABLED ? "Am Ende schicken Sie die Antworten an Ihr Steuerbüro — nur dorthin, nicht ins Internet" : "Am Ende bekommen Sie ein PDF für Ihr Steuerbüro · Diese Seite speichert nichts im Internet"}</p>
+  `;
+  document.getElementById("start").onclick = ()=>{
+    idx = Object.keys(state).length ? Math.min(savedIdx, visible().length) : 0;
+    scrollTop(); render();
+  };
+  const r = document.getElementById("restart");
+  if(r) r.onclick = ()=>{
+    if(!confirm("Alle Antworten löschen und neu beginnen?")) return;
+    wipe(); idx = 0; scrollTop(); render();
+  };
+}
+
+function renderQuestion(q, vis){
+  rail.hidden = false; mast.hidden = true;
+  const n = idx + 1;
+  document.getElementById("railFill").style.width = (n/(vis.length+1)*100) + "%";
+  document.getElementById("railSec").textContent = SECTIONS[q.sec];
+  document.getElementById("railN").textContent = n;
+  document.getElementById("railTot").textContent = vis.length;
+  if(q.kind==="fields") return renderFields(q, vis);
+
+  const cur = state[q.id];
+  const isMulti = !!q.multi;
+  const sel = isMulti ? (Array.isArray(cur)?cur:[]) : cur;
+
+  const optsHtml = q.opts.map(o=>{
+    const on = isMulti ? sel.includes(o.v) : sel===o.v;
+    if(isMulti){
+      return `<button class="chk" type="button" data-v="${o.v}" aria-pressed="${on}">
+        <span class="box" aria-hidden="true"></span><span>${esc(o.lab)}</span></button>`;
+    }
+    return `<button class="opt" type="button" data-v="${o.v}" aria-pressed="${on}">
+      <span class="lab">${esc(o.lab)}</span>${o.sub?`<span class="sub">${esc(o.sub)}</span>`:""}</button>`;
+  }).join("");
+
+  app.innerHTML = `
+    <div class="qcard">
+      <p class="qsec">${SECTIONS[q.sec]}</p>
+      <h2 id="qh" tabindex="-1">${esc(q.q)}</h2>
+      ${q.help?`<p class="qhelp">${esc(q.help)}</p>`:""}
+      <div class="${isMulti?"chks":"opts"}" id="opts" role="group" aria-labelledby="qh">${optsHtml}</div>
+      ${q.max?`<p class="maxnote" id="maxnote"></p>`:""}
+      <div id="realitySlot" aria-live="polite"></div>
+    </div>
+    <div class="nav">
+      <button class="btn ghost" id="back" type="button">Zurück</button>
+      <button class="btn" id="next" type="button" ${canAdvance(q)?"":"disabled"}>${idx===vis.length-1?"Mein Blatt erstellen":"Weiter"}</button>
+    </div>
+  `;
+
+  showReality(q); showMax(q);
+
+  document.getElementById("opts").addEventListener("click", e=>{
+    const b = e.target.closest("[data-v]"); if(!b) return;
+    const v = b.dataset.v;
+    if(isMulti){
+      const arr = Array.isArray(state[q.id]) ? state[q.id].slice() : [];
+      const i = arr.indexOf(v);
+      if(i>=0) arr.splice(i,1);
+      else {
+        if(q.max && arr.length>=q.max){ showToast("Bitte höchstens " + q.max + " auswählen"); return; }
+        arr.push(v);
+      }
+      state[q.id]=arr;
+    } else { state[q.id]=v; }
+    save();
+    [...document.querySelectorAll("#opts [data-v]")].forEach(el=>{
+      const on = isMulti ? (state[q.id]||[]).includes(el.dataset.v) : state[q.id]===el.dataset.v;
+      el.setAttribute("aria-pressed", on);
+    });
+    document.getElementById("next").disabled = !canAdvance(q);
+    showReality(q); showMax(q);
+  });
+
+  document.getElementById("back").onclick = ()=>{ idx=Math.max(-1, idx-1); save(); scrollTop(); render(); };
+  document.getElementById("next").onclick = ()=>{ idx++; save(); scrollTop(); render(); };
+
+  const h = document.getElementById("qh"); if(h) h.focus({preventScroll:true});
+}
+
+function fv(k){ return ((state.f||{})[k] ?? "").toString().trim(); }
+function fieldError(f){
+  const v = fv(f.k);
+  if(!v) return f.req ? "Bitte ausfüllen" : "";
+  if(f.type==="digits" && f.len && v.replace(/\D/g,"").length!==f.len) return "Bitte genau " + f.len + " Ziffern";
+  if(f.type==="num" && !/^\d+([.,]\d+)?$/.test(v)) return "Bitte nur eine Zahl";
+  if(f.type==="email" && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)) return "Das sieht nicht wie eine E-Mail aus";
+  return "";
+}
+function shownFields(q){ return q.fields.filter(f=>!f.showIf || f.showIf(state.f||{})); }
+
+function renderFields(q, vis){
+  state.f = state.f || {};
+  if(!state.f.year) state.f.year = URL_YEAR || YEAR_OPTS[0];
+  const inputHtml = f=>{
+    const v = esc(fv(f.k)), id = "f_" + f.k;
+    if(f.type==="select") return `<select id="${id}" data-k="${f.k}">${f.opts.map(o=>
+      `<option value="${esc(o)}"${o===fv(f.k)?" selected":""}>${o?esc(o):"— bitte wählen —"}</option>`).join("")}</select>`;
+    const t = f.type==="email" ? "email" : f.type==="tel" ? "tel" : "text";
+    const im = (f.type==="digits"||f.type==="num") ? ' inputmode="numeric"' : f.type==="tel" ? ' inputmode="tel"' : "";
+    return `<input id="${id}" data-k="${f.k}" type="${t}"${im} value="${v}" autocomplete="${f.ac||"off"}">`;
+  };
+  const draw = ()=>shownFields(q).map(f=>{
+    const e = fieldError(f), touched = !!(state.f||{})[f.k];
+    return `<div class="fld${e&&touched?" bad":""}">
+      <label for="f_${f.k}">${esc(f.lab)}${f.hint?`<span class="hint">${esc(f.hint)}</span>`:""}</label>
+      ${inputHtml(f)}
+      ${e&&touched?`<p class="err">${esc(e)}</p>`:""}
+    </div>`;}).join("");
+
+  app.innerHTML = `
+    <div class="qcard">
+      <p class="qsec">${SECTIONS[q.sec]}</p>
+      <h2 id="qh" tabindex="-1">${esc(q.q)}</h2>
+      ${q.help?`<p class="qhelp">${esc(q.help)}</p>`:""}
+      <div class="fgrid" id="fgrid">${draw()}</div>
+    </div>
+    <div class="nav">
+      <button class="btn ghost" id="back" type="button">Zurück</button>
+      <button class="btn" id="next" type="button" ${canAdvance(q)?"":"disabled"}>${idx===vis.length-1?"Mein Blatt erstellen":"Weiter"}</button>
+    </div>
+  `;
+  const grid = document.getElementById("fgrid");
+  const onEdit = e=>{
+    const k = e.target.dataset && e.target.dataset.k; if(!k) return;
+    state.f[k] = e.target.value; save();
+    document.getElementById("next").disabled = !canAdvance(q);
+    if(e.type==="change"){            // redraw on blur/select: errors + dependent fields
+      const keep = document.activeElement && document.activeElement.id;
+      grid.innerHTML = draw();
+      const el = keep && document.getElementById(keep); if(el) el.focus({preventScroll:true});
+    }
+  };
+  grid.addEventListener("input", onEdit);
+  grid.addEventListener("change", onEdit);
+  document.getElementById("back").onclick = ()=>{ idx=Math.max(-1, idx-1); save(); scrollTop(); render(); };
+  document.getElementById("next").onclick = ()=>{ idx++; save(); scrollTop(); render(); };
+  const h = document.getElementById("qh"); if(h) h.focus({preventScroll:true});
+}
+
+function canAdvance(q){
+  if(q.kind==="fields") return shownFields(q).every(f=>!fieldError(f));
+  const v = state[q.id];
+  if(q.multi) return Array.isArray(v) && v.length>0;
+  return !!v;
+}
+
+function showMax(q){
+  const el = document.getElementById("maxnote"); if(!el || !q.max) return;
+  const n = (state[q.id]||[]).length;
+  el.textContent = n + " von " + q.max + " ausgewählt";
+}
+
+function showReality(q){
+  const slot = document.getElementById("realitySlot"); if(!slot) return;
+  const v = state[q.id];
+  if(q.multi || !v){ slot.innerHTML=""; return; }
+  const o = q.opts.find(x=>x.v===v);
+  if(!o || !o.r || !REALITY[o.r]){ slot.innerHTML=""; return; }
+  const r = REALITY[o.r];
+  const tag = r.k==="urgent" ? "Das zuerst erledigen"
+            : r.k==="value" ? "Hier könnte Geld für Sie sein"
+            : r.k==="warn" ? "Gut zu wissen" : "So funktioniert das";
+  slot.innerHTML = `<div class="reality ${r.k}">
+    <p class="tag">${tag}</p>
+    <p><b>${esc(r.t)}</b></p>
+    ${r.b.map(p=>`<p>${p}</p>`).join("")}
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DAS BLATT
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function statusOf(v){
+  if(v==="yes") return `<span class="stat ok">BESTÄTIGT</span>`;
+  if(v==="no") return `<span class="stat no">NICHT VORHANDEN</span>`;
+  return `<span class="stat unk">UNGEKLÄRT</span>`;
+}
+
+const YEARS_LABEL={first:"Erstes Jahr","1to3":"1–3 Jahre","3to10":"3–10 Jahre","10plus":"Über 10 Jahre"};
+const CHANNEL_LABEL={agency:"Über eine Agentur",direct:"Direkt mit Familien",both:"Agentur und direkt"};
+const HH_LABEL={one:"Nur ein Haushalt",two3:"Zwei oder drei Haushalte",four:"Vier oder mehr Haushalte"};
+const INCOME_LABEL={u6600:"Unter 6.600 €","6600_13539":"6.600 € – 13.539 €","13539_30000":"13.539 € – 30.000 €",
+  "30000_55000":"30.000 € – 55.000 €",o55000:"Über 55.000 €",unknown:"Nicht bekannt"};
+const HOME_LABEL={ro_only:"Nur Rumänien; in Österreich im Haus der Klientin",
+  client:"Nur das Haus der Klientin — sonst keine Wohnung",both:"Rumänien und eigene Unterkunft in Österreich",
+  at_only:"Nur Österreich"};
+const CENTRE_LABEL={ro:"Rumänien",at:"Österreich",split:"Wirklich geteilt"};
+const FILED_LABEL={every:"Jedes Jahr",some:"Nur in manchen Jahren",never:"Noch nie",unknown:"Nicht bekannt"};
+
+function buildFlags(){
+  const f=[], s=state;
+
+  if(s.letters==="mahnung") f.push({sev:"urgent", t:"Offene Mahnung, Zahlung überfällig",
+    d:"Solange das offen ist, laufen Gebühren weiter. Ratenzahlung ist üblich, muss aber beantragt werden. Vor allem anderen zu behandeln."});
+
+  if(s.gewerbe==="no"||s.gewerbe==="unknown") f.push({sev:"urgent", t:"Gewerbeberechtigung ungeklärt",
+    d:"Die Klientin kann nicht bestätigen, dass eine Gewerbeberechtigung für Personenbetreuung auf ihren Namen besteht. Alles Weitere — SVS-Pflicht, steuerliche Behandlung, rechtmäßige Tätigkeit — hängt davon ab."});
+
+  if(s.svs==="no"||s.svs==="unknown") f.push({sev:"warn", t:"SVS-Anmeldung ungeklärt",
+    d:"Unklar, ob eine Anmeldung besteht und ob Post zugestellt wird. Möglicherweise laufen unbemerkt Beiträge auf. Anmeldung und Zustelladresse prüfen."});
+
+  f.push({sev:"warn", t:"Steuerlicher Wohnsitz zu klären",
+    d:"Wohnsituation: " + (HOME_LABEL[s.home]||"—") + ". Mittelpunkt der Lebensinteressen laut eigener Angabe: " + (CENTRE_LABEL[s.centre]||"—") +
+      ". Nach österreichischer Praxis gilt der Haushalt der betreuten Person als Betriebsstätte; ein dauerhaft verfügbares Zimmer kann einen Wohnsitz begründen. Unbeschränkte oder beschränkte Steuerpflicht sowie die Anwendung des DBA Österreich–Rumänien sind zu beurteilen."});
+
+  if(s.households==="one") f.push({sev:"warn", t:"Nur ein Auftraggeber — Einstufung prüfen",
+    d:"In den letzten zwölf Monaten nur ein Haushalt. Prüfung auf Scheinselbständigkeit sinnvoll, mit Hinweis auf die Folgen in beide Richtungen."});
+
+  if(s.children==="ro"||s.children==="split"){
+    const claimed = s.famben==="yes";
+    f.push({sev:"value", t: claimed ? "Familienbeihilfe bereits beantragt — Richtigkeit prüfen"
+                                    : "Familienbeihilfe wahrscheinlich nicht ausgeschöpft",
+      d: claimed
+        ? "Kinder in Rumänien, ein Antrag besteht. Prüfen, ob die Ausgleichszahlung richtig berechnet ist und nichts offen ist."
+        : "Kinder wohnen in Rumänien; nach eigener Angabe wird keine österreichische Leistung bezogen. Selbständigkeit schließt den Anspruch nicht aus. Familienbeihilfe und Ausgleichszahlung prüfen, samt möglicher Rückwirkung."});
+  }
+
+  if(s.income==="o55000") f.push({sev:"warn", t:"Umsatz über der Kleinunternehmergrenze",
+    d:"Angegebener Umsatz über 55.000 €. Umsatzsteuerpflicht und Rechnungslegung sind zu klären."});
+
+  if(s.filed==="never") f.push({sev:"warn", t:"Noch nie eine Einkommensteuererklärung abgegeben",
+    d:"Ohne Bescheid kann die SVS die Beiträge nicht endgültig feststellen; das Konto bleibt dauerhaft vorläufig. Offene Jahre feststellen und prüfen, ob eine Gutschrift besteht."});
+  else if(s.filed==="some"||s.filed==="unknown") f.push({sev:"warn", t:"Unvollständige Abgabehistorie",
+    d:"Die Klientin kann nicht angeben, welche Jahre abgegeben wurden. Vor jeder Berechnung den Stand feststellen."});
+
+  if(s.nachbem==="no"||s.nachbem==="unknown") f.push({sev:"warn", t:"Nachbemessung steht noch aus",
+    d:"Bisher keine rückwirkende SVS-Nachbemessung erhalten. Zum erwarteten Zeitpunkt und zur empfohlenen Rücklage beraten — danach wurde ausdrücklich gefragt."});
+
+  if(s.years==="first") f.push({sev:"warn", t:"Noch in den reduzierten Anfangsjahren",
+    d:"Erste zwei Kalenderjahre der Selbständigkeit. Zur Höhe der Beiträge nach Ablauf der Reduktion beraten."});
+
+  if(s.income==="unknown") f.push({sev:"warn", t:"Umsatz nicht bekannt",
+    d:"Die Klientin kann den ungefähren Jahresumsatz nicht angeben. Kontoauszüge sind vermutlich der schnellste Weg zu einem Stand."});
+
+  return f;
+}
+
+function buildQuestions(){
+  const s=state, out=[];
+  if(s.letters==="mahnung") out.push("Die überfällige Zahlung — welche Möglichkeiten habe ich, und kann ich eine Ratenzahlung beantragen?");
+  if(s.nachbem!=="yes") out.push("Wie viel soll ich jeden Monat für die Nachbemessung zur Seite legen?");
+  else out.push("Wie viel Nachbemessung kommt noch, und für welche Jahre?");
+  if(s.children==="ro"||s.children==="split") out.push("Steht mir Familienbeihilfe oder eine Ausgleichszahlung für meine Kinder in Rumänien zu — und geht das rückwirkend?");
+  out.push("Wo bin ich eigentlich steuerpflichtig, so wie ich lebe und wohne?");
+  if(s.gewerbe!=="yes") out.push("Besteht meine Gewerbeberechtigung wirklich, und läuft sie auf meinen Namen?");
+  if(s.svs!=="yes") out.push("Bin ich bei der SVS richtig angemeldet, und ist dort etwas offen?");
+  if(s.filed==="never"||s.filed==="some"||s.filed==="unknown") out.push("Welche Jahre muss ich noch abgeben, und was passiert, wenn ich sie verspätet abgebe?");
+  if(s.households==="one") out.push("Ist es ein Problem für meine Selbständigkeit, dass ich nur für einen Haushalt arbeite?");
+  if(s.channel==="agency"||s.channel==="both") out.push("Stimmt das, was die Agentur mir abzieht, und ist ihre Gebühr eine Betriebsausgabe?");
+  if(s.income==="o55000") out.push("Muss ich mich jetzt um die Umsatzsteuer kümmern?");
+  if((s.worry||[]).includes("pension")) out.push("Wie passen meine rumänischen und meine österreichischen Pensionsjahre zusammen?");
+  if((s.worry||[]).includes("health")) out.push("Wo bin ich krankenversichert, und brauche ich eine A1-Bescheinigung?");
+  out.push("Was soll ich künftig aufheben, und wie, damit das nächste Jahr leichter wird?");
+  return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PDF FÜRS BÜRO — lesbares Blatt + die Antworten maschinenlesbar in den
+   PDF-Metadaten (Keywords: "STEUERMAPPE1:" + Base64-JSON). Das Büro liest
+   sie exakt aus, ohne KI. Erzeugt wird alles hier im Browser.
+   ═══════════════════════════════════════════════════════════════════════ */
+function loadJsPdf(){
+  if(window.jspdf) return Promise.resolve();
+  return new Promise((res, rej)=>{
+    const sc = document.createElement("script");
+    sc.src = "/fragebogen-assets/jspdf.umd.min.js";
+    sc.onload = ()=>res(); sc.onerror = rej;
+    document.head.appendChild(sc);
+  });
+}
+function b64utf8(str){
+  const bytes = new TextEncoder().encode(str); let bin = "";
+  for(let i=0;i<bytes.length;i+=0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i+0x8000));
+  return btoa(bin);
+}
+/* Standard-PDF-Schrift kann nur Latin-1: rumänische Sonderzeichen nur fürs Bild vereinfachen
+   (in den Metadaten bleibt alles exakt). */
+function pdfSafe(t){
+  return String(t).replace(/[șş]/g,"s").replace(/[ȘŞ]/g,"S").replace(/[țţ]/g,"t").replace(/[ȚŢ]/g,"T")
+    .replace(/ă/g,"a").replace(/Ă/g,"A").replace(/[–—]/g,"-").replace(/[„“”]/g,'"').replace(/[’‘]/g,"'")
+    .replace(/[·•]/g,"-").replace(/…/g,"...").replace(/[^\x00-\xFF]/g,"?");
+}
+async function buildPdf(sub){
+  await loadJsPdf();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"mm", format:"a4"});
+  doc.setProperties({title:"Fragebogen " + sub.ref, subject:"Steuermappe Fragebogen", creator:"Steuermappe",
+    keywords: PDF_MARK + b64utf8(JSON.stringify({v:1, ref:sub.ref, year:sub.year, fields:sub.fields,
+      answers:sub.answers, flags:sub.flags, questions:sub.questions}))});
+  const W = 210, M = 18; let y = 20;
+  const foot = ()=>{ doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(120);
+    doc.text(pdfSafe("Kennnummer " + sub.ref + " - Selbstauskunft, ungeprüft - Seite " + doc.getNumberOfPages()), M, 289); doc.setTextColor(20); };
+  const need = h=>{ if(y + h > 280){ foot(); doc.addPage(); y = 20; } };
+  doc.setFont("helvetica","bold"); doc.setFontSize(17); doc.text("Fragebogen Steuermappe", M, y); y += 8;
+  doc.setFont("helvetica","normal"); doc.setFontSize(10);
+  doc.text(pdfSafe("Kennnummer: " + sub.ref + "    Steuerjahr: " + (sub.year || "-") + "    Erstellt: " + new Date().toLocaleDateString("de-AT")), M, y); y += 9;
+  doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text("Angaben für die Steuer", M, y); y += 6;
+  doc.setFontSize(10);
+  dataRows().forEach(([l,v])=>{
+    const lines = doc.splitTextToSize(pdfSafe(v || "-"), W - M - 85);
+    need(lines.length*5 + 1);
+    doc.setFont("helvetica","bold"); doc.text(doc.splitTextToSize(pdfSafe(l), 62), M, y);
+    doc.setFont("helvetica","normal"); doc.text(lines, M + 67, y);
+    y += Math.max(lines.length, doc.splitTextToSize(pdfSafe(l), 62).length) * 5 + 1.5;
+  });
+  y += 4;
+  doc.setFont("courier","normal"); doc.setFontSize(8.5);
+  sub.sheet_text.split("\n").forEach(line=>{
+    doc.splitTextToSize(pdfSafe(line) || " ", W - 2*M).forEach(l=>{ need(4); doc.text(l, M, y); y += 3.9; });
+  });
+  foot();
+  return doc.output("arraybuffer");
+}
+function downloadBlob(name, blob){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name; a.rel = "noopener";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+}
+
+function dataRows(){
+  const f = state.f || {};
+  return FIELD_DEFS.filter(d=>!d.showIf || d.showIf(f) || f[d.k]).map(d=>{
+    let v = (f[d.k] ?? "").toString().trim();
+    if(d.k==="children" && state.children==="no") v = "0";
+    return [d.lab.replace(/\?$/,""), v];
+  });
+}
+
+const DOC_ORDER=["gewerbeschein","steuernr","vorschreibung","nachbem","bescheid","agencyc","agencys",
+  "honorar","bank","travel","ecard","meldezettel","a1","ro_tax"];
+
+function renderBrief(){
+  rail.hidden = true; mast.hidden = false;
+  const s = state;
+  const flags = buildFlags();
+  const questions = buildQuestions();
+  const held = new Set(s.docs||[]);
+  const worries = (s.worry||[]).map(w=>WORRY_LABELS[w]);
+  const today = new Date().toLocaleDateString("de-AT",{day:"2-digit",month:"2-digit",year:"numeric"});
+  const ref = INVITE_REF || "SM-" + today.replace(/\./g,"") + "-" +
+              Math.abs(JSON.stringify(s).split("").reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0,0)).toString(36).slice(0,4).toUpperCase();
+
+  /* Dateiname beim „Als PDF speichern" und beim Download */
+  document.title = "Beiblatt zur Erstberatung " + ref;
+
+  const canShare = typeof navigator.share === "function";
+
+  app.innerHTML = `
+    <div class="brief" id="brief">
+      <div class="brief-head">
+        ${CFG.briefOrg?`<p class="org">${esc(CFG.briefOrg)}</p>`:""}
+        <h2 id="briefH" tabindex="-1">Beiblatt zur Erstberatung</h2>
+        <p class="sub">Vorbereitung für einen ersten Termin — selbständige Personenbetreuerin, Korridor Rumänien–Österreich</p>
+      </div>
+
+      <div class="brief-ref">
+        <div><dt>Kennnummer</dt><dd class="mono">${ref}</dd></div>
+        <div><dt>Erstellt am</dt><dd>${today}</dd></div>
+        <div><dt>Offene Punkte</dt><dd>${flags.length}</dd></div>
+      </div>
+
+      <div class="bsec">
+        <h3><span class="no">0</span> Angaben für die Steuer</h3>
+        <dl class="rows">
+          ${dataRows().map(([l,v])=>`<dt>${esc(l)}</dt><dd>${v?esc(v):"—"}</dd>`).join("")}
+        </dl>
+      </div>
+
+      <div class="bsec">
+        <h3><span class="no">1</span> Situation</h3>
+        <dl class="rows">
+          <dt>In Österreich tätig seit</dt><dd>${YEARS_LABEL[s.years]||"—"}</dd>
+          <dt>Arbeit über</dt><dd>${CHANNEL_LABEL[s.channel]||"—"}</dd>
+          <dt>Haushalte, 12 Monate</dt><dd>${HH_LABEL[s.households]||"—"}</dd>
+          <dt>Umsatz, letztes ganzes Jahr</dt><dd>${INCOME_LABEL[s.income]||"—"}</dd>
+          <dt>Wohnung / Zimmer</dt><dd>${HOME_LABEL[s.home]||"—"}</dd>
+          <dt>Mittelpunkt des Lebens</dt><dd>${CENTRE_LABEL[s.centre]||"—"}</dd>
+          <dt>Kinder</dt><dd>${s.children==="ro"?"Ja — wohnhaft in Rumänien":s.children==="at"?"Ja — wohnhaft in Österreich":s.children==="split"?"Ja — in beiden Ländern":"Keine unter 18 / in Ausbildung"}</dd>
+          <dt>Steuererklärungen</dt><dd>${FILED_LABEL[s.filed]||"—"}</dd>
+        </dl>
+      </div>
+
+      <div class="bsec">
+        <h3><span class="no">2</span> Anmeldungen</h3>
+        <dl class="rows">
+          <dt>Gewerbeberechtigung</dt><dd>${statusOf(s.gewerbe)}</dd>
+          <dt>Anmeldung bei der SVS</dt><dd>${statusOf(s.svs)}</dd>
+          <dt>Steuernummer</dt><dd>${statusOf(s.steuernr)}</dd>
+          <dt>Offene Post</dt><dd>${s.letters==="mahnung"?`<span class="stat no">MAHNUNG / RÜCKSTAND</span>`:s.letters==="some"?`<span class="stat unk">UNERLEDIGTES</span>`:`<span class="stat ok">KEINE ANGEGEBEN</span>`}</dd>
+        </dl>
+      </div>
+
+      <div class="bsec">
+        <h3><span class="no">3</span> Punkte, die fachlich zu beurteilen sind</h3>
+        ${flags.map(f=>`<div class="flag ${f.sev}">
+          <span class="sev">${f.sev==="urgent"?"Eilig":f.sev==="value"?"Anspruch":"Prüfen"}</span>
+          <div class="body"><p class="ttl">${esc(f.t)}</p><p class="dsc">${f.d}</p></div>
+        </div>`).join("")}
+      </div>
+
+      <div class="bsec">
+        <h3><span class="no">4</span> Unterlagen</h3>
+        <div class="docs">
+          ${DOC_ORDER.map(d=>`<span class="${held.has(d)?"has":"miss"}"><span class="m">${held.has(d)?"✓":"—"}</span>${esc(DOC_LABELS[d])}</span>`).join("")}
+        </div>
+      </div>
+
+      <div class="bsec">
+        <h3><span class="no">5</span> Was der Klientin am meisten Sorgen macht</h3>
+        <ol class="qlist">${worries.map(w=>`<li>${esc(w)}</li>`).join("") || "<li>Nichts angegeben</li>"}</ol>
+      </div>
+
+      <div class="bsec">
+        <h3><span class="no">6</span> Fragen, der Reihe nach</h3>
+        <ol class="qlist">${questions.map(q=>`<li>${esc(q)}</li>`).join("")}</ol>
+      </div>
+
+      <div class="brief-foot">
+        <p>Von der Klientin selbst mit einem geführten Fragebogen erstellt. Alle Angaben sind Selbstauskunft und ungeprüft.
+        Dieses Blatt ist keine Steuerberatung; es wurde kein Betrag berechnet und keine Abzugsfähigkeit beurteilt.</p>
+        <p>Genannte Beträge Stand ${CFG.year}. Sie ändern sich jährlich.</p>
+      </div>
+
+      <div class="bsec notes">
+        <h3><span class="no">7</span> Notizen im Termin</h3>
+        <p class="notesref">Beiblatt ${ref} · ${today} · Selbstauskunft, ungeprüft</p>
+        ${Array.from({length:22},()=>'<div class="line"></div>').join("")}
+      </div>
+    </div>
+
+    <div class="after">
+      ${SEND_ENABLED?`<div class="sendbox screen-only" id="sendbox">
+        <p><b>An das Steuerbüro schicken</b></p>
+        <p>Dann muss niemand Ihre Angaben abtippen, und das Büro weiß, welche Unterlagen noch fehlen.</p>
+        <div class="nav"><button class="btn" id="send" type="button">An das Steuerbüro schicken</button></div>
+      </div>`:`<div class="sendbox screen-only" id="pdfbox">
+        <p><b>Schicken Sie dieses PDF an Ihr Steuerbüro</b></p>
+        <p>Per WhatsApp oder E-Mail. Dann muss niemand Ihre Angaben abtippen. Kennnummer <b>${esc(ref)}</b>.</p>
+        <div class="nav">
+          <button class="btn" id="pdfshare" type="button">PDF schicken (WhatsApp, E-Mail …)</button>
+          <button class="btn ghost" id="pdfdl" type="button">PDF speichern</button>
+        </div>
+      </div>`}
+      <h3>Vor dem Termin</h3>
+      <ul>
+        <li><b>Drucken Sie dieses Blatt aus</b> oder speichern Sie es, und nehmen Sie es mit.</li>
+        <li><b>Nehmen Sie alles mit, was in Punkt 4 mit „—" steht</b> — auch ungeöffnet. Ungeöffnet ist in Ordnung. Fehlend ist es nicht.</li>
+        ${s.letters!=="none"?`<li><b>Nehmen Sie die Briefe mit, die Sie noch nicht erledigt haben.</b> Alle, so wie sie sind.</li>`:""}
+        ${(s.children==="ro"||s.children==="split")?`<li><b>Nehmen Sie die Geburtsurkunden Ihrer Kinder mit</b> und alles, was Rumänien gezahlt oder abgelehnt hat.</li>`:""}
+        <li>Wenn Sie etwas nicht finden: Sagen Sie es. Eine ehrliche Lücke ist leichter als eine Vermutung.</li>
+      </ul>
+      <h3>Was dieses Blatt nicht kann</h3>
+      <ul>
+        <li>Es sagt nicht, wie viel Sie zahlen. Nicht, was Sie absetzen können. Nicht, wo Sie steuerpflichtig sind.</li>
+        <li>Das beantwortet die Steuerberaterin — <b>und jetzt wissen Sie, was Sie fragen müssen.</b></li>
+      </ul>
+
+      <div class="actions">
+        <p class="lbl">Blatt mitnehmen</p>
+        <div class="nav">
+          <button class="btn" id="print" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="7" rx="1"/><path d="M7 16h10v4H7z"/></svg>
+            Drucken oder als PDF speichern
+          </button>
+          <button class="btn ghost" id="copy" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M6 15H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v1"/></svg>
+            Als Text kopieren
+          </button>
+          <button class="btn ghost" id="dl" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11"/><path d="M8 11l4 4 4-4"/><path d="M5 19h14"/></svg>
+            Als Datei speichern
+          </button>
+          ${canShare?`<button class="btn ghost" id="share" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5.5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="18.5" r="2.5"/><path d="M8.2 10.8l7.6-4M8.2 13.2l7.6 4"/></svg>
+            Weitergeben
+          </button>`:""}
+          ${CFG.mailTo?`<button class="btn ghost" id="mail" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M3.5 6.5l8.5 6 8.5-6"/></svg>
+            Per E-Mail schicken
+          </button>`:""}
+        </div>
+        <div class="nav">
+          <button class="btn ghost" id="edit" type="button">Antwort ändern</button>
+          <button class="btn quiet" id="del" type="button">Meine Antworten von diesem Gerät löschen</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const text = ()=>briefAsText(ref, today, flags, questions, held, worries);
+  const fname = "Beiblatt-Erstberatung-" + ref + ".txt";
+
+  document.getElementById("print").onclick = ()=>window.print();
+
+  const submission = ()=>{
+    const f = Object.assign({}, state.f||{});
+    if(state.children==="no") f.children = "0";
+    const answers = {}; Object.keys(state).forEach(k=>{ if(k!=="f") answers[k]=state[k]; });
+    return {client_id: CLIENT_ID ? Number(CLIENT_ID) : null, year: Number(f.year)||null,
+      fields: f, answers, ref, flags: flags.map(x=>({sev:x.sev, title:x.t})), questions, sheet_text: text()};
+  };
+
+  const pdfName = "Fragebogen_" + ref + "_" + ((state.f||{}).year || "") + ".pdf";
+  const pdfBlob = async ()=>new Blob([await buildPdf(submission())], {type:"application/pdf"});
+  const pdfDl = document.getElementById("pdfdl");
+  if(pdfDl) pdfDl.onclick = async ()=>{
+    try{ downloadBlob(pdfName, await pdfBlob()); showToast("PDF gespeichert: " + pdfName); }
+    catch(e){ showToast("PDF hat nicht geklappt — bitte drucken"); }
+  };
+  const pdfSh = document.getElementById("pdfshare");
+  if(pdfSh) pdfSh.onclick = async ()=>{
+    try{
+      const file = new File([await pdfBlob()], pdfName, {type:"application/pdf"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title:"Fragebogen " + ref});
+      } else {
+        downloadBlob(pdfName, file);
+        showToast("PDF gespeichert — bitte per WhatsApp oder E-Mail ans Büro schicken");
+      }
+    }catch(e){ if(e && e.name!=="AbortError") showToast("PDF hat nicht geklappt — bitte drucken"); }
+  };
+
+  const sendBtn = document.getElementById("send");
+  if(sendBtn) sendBtn.onclick = async ()=>{
+    const box = document.getElementById("sendbox");
+    sendBtn.disabled = true; sendBtn.textContent = "Wird geschickt …";
+    try{
+      const res = await fetch(CFG.api + "/api/questionnaire", {method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify(submission())});
+      const j = await res.json();
+      if(!res.ok || !j.success) throw new Error(j.error || j.detail || res.status);
+      box.className = "sendbox screen-only";
+      box.innerHTML = `<p><b>Geschickt.</b> Das Steuerbüro hat Ihre Antworten (Kennnummer ${esc(ref)}).</p>
+        <p>Sie können die Antworten jederzeit ändern und noch einmal schicken.</p>`;
+    }catch(e){
+      box.className = "sendbox err screen-only";
+      sendBtn.disabled = false; sendBtn.textContent = "Noch einmal versuchen";
+      showToast("Schicken hat nicht geklappt — bitte drucken oder speichern");
+    }
+  };
+
+  document.getElementById("edit").onclick = ()=>{ idx = visible().length-1; save(); scrollTop(); render(); };
+
+  document.getElementById("copy").onclick = ()=>{
+    copyText(text()).then(
+      ()=>showToast("In die Zwischenablage kopiert"),
+      ()=>showToast("Kopieren hat nicht geklappt — bitte drucken oder speichern")
+    );
+  };
+
+  document.getElementById("dl").onclick = ()=>{
+    try { downloadText(fname, text()); showToast("Datei gespeichert: " + fname); }
+    catch(e){ showToast("Speichern hat nicht geklappt — bitte drucken"); }
+  };
+
+  const sh = document.getElementById("share");
+  if(sh) sh.onclick = ()=>{
+    navigator.share({ title:"Beiblatt zur Erstberatung " + ref, text:text() })
+      .catch(()=>{ /* Abbruch durch die Benutzerin ist kein Fehler */ });
+  };
+
+  const ml = document.getElementById("mail");
+  if(ml) ml.onclick = ()=>{
+    const body = encodeURIComponent(text());
+    const subj = encodeURIComponent("Beiblatt zur Erstberatung " + ref);
+    if(body.length > 1800){
+      copyText(text()).then(
+        ()=>{ showToast("Text kopiert — bitte in die E-Mail einfügen");
+              window.location.href = "mailto:" + CFG.mailTo + "?subject=" + subj; },
+        ()=>showToast("Bitte das Blatt ausdrucken und mitbringen")
+      );
+    } else {
+      window.location.href = "mailto:" + CFG.mailTo + "?subject=" + subj + "&body=" + body;
+    }
+  };
+
+  document.getElementById("del").onclick = ()=>{
+    if(!confirm("Alle Ihre Antworten von diesem Gerät löschen? Das Blatt ist danach weg. Drucken oder speichern Sie es vorher.")) return;
+    wipe(); idx = -1; scrollTop(); render();
+    showToast("Gelöscht. Auf diesem Gerät ist nichts mehr gespeichert.");
+  };
+
+  const h = document.getElementById("briefH"); if(h) h.focus({preventScroll:true});
+}
+
+function briefAsText(ref, today, flags, questions, held, worries){
+  const s=state, L=[];
+  L.push("BEIBLATT ZUR ERSTBERATUNG");
+  L.push("Selbständige Personenbetreuerin · Korridor Rumänien–Österreich");
+  L.push("Kennnummer " + ref + "  ·  Erstellt am " + today);
+  L.push("");
+  L.push("0. ANGABEN FÜR DIE STEUER");
+  dataRows().forEach(([l,v])=>L.push("  " + (l + ":").padEnd(27) + (v || "—")));
+  L.push("");
+  L.push("1. SITUATION");
+  L.push("  In Österreich tätig seit:  " + (YEARS_LABEL[s.years]||"—"));
+  L.push("  Arbeit über:               " + (CHANNEL_LABEL[s.channel]||"—"));
+  L.push("  Haushalte, 12 Monate:      " + (HH_LABEL[s.households]||"—"));
+  L.push("  Umsatz letztes Jahr:       " + (INCOME_LABEL[s.income]||"—"));
+  L.push("  Wohnung / Zimmer:          " + (HOME_LABEL[s.home]||"—"));
+  L.push("  Mittelpunkt des Lebens:    " + (CENTRE_LABEL[s.centre]||"—"));
+  L.push("  Steuererklärungen:         " + (FILED_LABEL[s.filed]||"—"));
+  L.push("");
+  L.push("2. ANMELDUNGEN");
+  const st=v=>v==="yes"?"BESTÄTIGT":v==="no"?"NICHT VORHANDEN":"UNGEKLÄRT";
+  L.push("  Gewerbeberechtigung:       " + st(s.gewerbe));
+  L.push("  Anmeldung bei der SVS:     " + st(s.svs));
+  L.push("  Steuernummer:              " + st(s.steuernr));
+  L.push("");
+  L.push("3. PUNKTE, DIE FACHLICH ZU BEURTEILEN SIND");
+  flags.forEach(f=>{ L.push("  [" + (f.sev==="urgent"?"EILIG":f.sev==="value"?"ANSPRUCH":"PRÜFEN") + "] " + f.t);
+    L.push("     " + f.d.replace(/<[^>]+>/g,"")); });
+  L.push("");
+  L.push("4. VORHANDENE UNTERLAGEN");
+  DOC_ORDER.forEach(d=>L.push("  " + (held.has(d)?"[x] ":"[ ] ") + DOC_LABELS[d]));
+  L.push("");
+  L.push("5. WAS DER KLIENTIN AM MEISTEN SORGEN MACHT");
+  (worries.length?worries:["Nichts angegeben"]).forEach(w=>L.push("  · " + w));
+  L.push("");
+  L.push("6. FRAGEN, DER REIHE NACH");
+  questions.forEach((q,i)=>L.push("  " + (i+1) + ". " + q));
+  L.push("");
+  L.push("Selbstauskunft, ungeprüft. Keine Steuerberatung; kein Betrag berechnet.");
+  L.push("Genannte Beträge Stand " + CFG.year + "; sie ändern sich jährlich.");
+  return L.join("\n");
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KOPIEREN / SPEICHERN — mit Fallback für ältere und http-Umgebungen
+   ═══════════════════════════════════════════════════════════════════════ */
+function copyText(t){
+  if(navigator.clipboard && window.isSecureContext){
+    return navigator.clipboard.writeText(t);
+  }
+  return new Promise((res, rej)=>{
+    const ta = document.createElement("textarea");
+    ta.value = t;
+    ta.setAttribute("readonly","");
+    ta.style.cssText = "position:fixed;top:0;left:-9999px;opacity:0";
+    document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, ta.value.length);
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch(e){}
+    document.body.removeChild(ta);
+    ok ? res() : rej();
+  });
+}
+
+function downloadText(name, text){
+  const blob = new Blob(["﻿" + text], {type:"text/plain;charset=utf-8"});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url; a.download = name; a.rel = "noopener";
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KLEINTEILE
+   ═══════════════════════════════════════════════════════════════════════ */
+let toastT;
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg || "In die Zwischenablage kopiert";
+  t.classList.add("on"); clearTimeout(toastT);
+  toastT = setTimeout(()=>t.classList.remove("on"), 2600);
+}
+function scrollTop(){
+  try { window.scrollTo({top:0, behavior:"instant"}); } catch(e){ window.scrollTo(0,0); }
+}
+
+/* Masthead- und Fußzeile aus der Konfiguration */
+document.getElementById("mastKick").textContent = CFG.brand;
+document.getElementById("siteFoot").innerHTML = `
+  <span>${CFG.org?`© ${new Date().getFullYear()} ${esc(CFG.org)}`:""}${CFG.org&&CFG.phone?" · ":""}${CFG.phone?`Fragen? ${esc(CFG.phone)}`:""}</span>
+  <span class="links">
+    ${CFG.roVersion?`<a href="${esc(CFG.roVersion)}" hreflang="ro">Română</a>`:""}
+    ${CFG.impressum?`<a href="${esc(CFG.impressum)}">Impressum</a>`:""}
+    ${CFG.datenschutz?`<a href="${esc(CFG.datenschutz)}">Datenschutz</a>`:""}
+  </span>`;
+
+render();
+
+/* Vom Büro geöffnet: bereits geschickte Antworten laden, sonst den Namen vorbelegen. */
+(async function boot(){
+  if(!SEND_ENABLED || !CLIENT_ID){
+    if(URL_YEAR && !(state.f||{}).year){ state.f = Object.assign({}, state.f, {year: URL_YEAR}); save(); }
+    return;
+  }
+  try{
+    const qs = "client_id=" + CLIENT_ID + (URL_YEAR ? "&year=" + URL_YEAR : "");
+    const j = await fetch(CFG.api + "/api/questionnaire?" + qs).then(r=>r.json());
+    if(j && j.answers && Object.keys(state).length===0){
+      state = Object.assign({}, j.answers, {f: Object.assign({}, j.fields||{})});
+    } else if(j && j.client_name){
+      state.f = state.f || {};
+      if(!state.f.name) state.f.name = j.client_name;
+    }
+    if(URL_YEAR){ state.f = state.f || {}; state.f.year = URL_YEAR; }
+    save(); render();
+  }catch(e){ /* Büro nicht erreichbar: Fragebogen läuft trotzdem lokal */ }
+})();
+</script>
+</body>
+</html>

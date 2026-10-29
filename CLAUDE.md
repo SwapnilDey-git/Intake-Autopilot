@@ -2,81 +2,125 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-For detailed run/start/stop/debug commands for every service and scenario (including Docker/disk-space troubleshooting), see `RUNNING.md`. For setting up a fresh machine's prerequisites before the project itself is even on it, see `SETUP.md` (Windows/WSL2) or `SETUP-mac.md` (macOS — the counterpart shipped in the Mac handoff package, which additionally covers running Ollama natively for Metal GPU acceleration instead of CPU-only in-container inference).
+**Read order for deep context** (this file is the short version): `SESSION-HANDOVER-2026-09-01.md` (newest full handoff — read this first, it supersedes everything below where they conflict) → `ARCHITECTURE.md` (system diagram) → `RUNNING.md` (64KB operational bible: every run/debug/deploy scenario, full model-choice history, troubleshooting war stories) → `CONTEXT.md` (domain glossary) → `docs/adr/0001-person-centric-year-model.md` (why the data model looks the way it does) → `WHERE-WE-ARE.md` (plain-language status / what's blocked on the client). `SETUP.md` (Windows/WSL2) or `SETUP-mac.md` (macOS) cover fresh-machine prerequisites.
+
+## Read this before touching git or client data
+
+- **Git HEAD is far behind the working tree.** Most of the real implementation — `backend/classify.py`, `backend/extractors.py`, the person-centric dashboard pages (`dashboard/src/app/clients/`, `dashboard/src/app/reviewer/`), `docs/`, `ARCHITECTURE.md`, `CONTEXT.md`, large chunks of `backend/main.py`/`ai-service/main.py`/`database/schema.sql` — is **untracked or modified, not committed**. `git log` stops around the 2026-07-23 Mac-handoff baseline plus a handful of wayfinder-ticket commits; everything from the 2026-08-20 person-centric rewrite onward lives only on disk. Don't `git checkout`/`reset`/`clean` assuming HEAD reflects current behavior — verify against the actual files first. A good early task on a fresh checkout is committing this state onto `wip/next-steps` rather than leaving it fragile.
+- **PII is non-negotiable.** Real client tax documents, WhatsApp images, and their filenames live under `storage/`, `reference/`, `testdoc/`, and most of `.scratch/` — all gitignored on purpose. Never read, echo, log, commit, or transmit the *contents or filenames* of client documents; report structure/counts only (e.g. "subfolder [10]: vcf=1, e1a=2"), never by client name. On anything resembling the client's production box, report presence/source booleans only, never raw extracted values. Never enter the client's own OAuth/WhatsApp credentials, and never send anything to the client without an explicit "go" — draft only.
 
 ## What this is
 
-An "airgapped" tax-intake automation system: a PDF intake form gets uploaded, a local vision LLM (Ollama) extracts structured fields from it, a human reviews/corrects the extraction in a web dashboard, and approved forms get written into a per-client copy of the Excel tax-calc template. Everything runs locally/self-hosted — no external API calls — because the data is sensitive tax information.
+An airgapped, local-first pipeline for an Austrian tax practice (Stabinger Consulting) that mostly files for Romanian 24h-care workers. It ingests client documents (PDF/WhatsApp photos/Gmail), classifies and extracts tax figures with a local vision/text LLM (no cloud — PII never leaves the box), merges them into a human-reviewed record, and produces one filled `EA {year}.xlsx` (Einnahmen-Ausgaben-Rechnung) per client per tax year.
+
+**Data model (ADR-0001, settled 2026-08-20): `Client (Person) → TaxYear → Documents`, merging into one per-(client, year) record → one EA sheet.** This replaced an earlier "one email = one case" model that had no way to represent a person who returns year after year with fields scattered across several documents. A `case` (email/WhatsApp/webhook/folder submission) still exists but is now just an attach-point that routes its documents to a client, not the output unit itself. See `CONTEXT.md` for the full glossary (Client, TaxYear, Document, Submission, Tax-relevant document, Primary/Supporting, EA sheet, Per-year record).
+
+**Two review flows currently coexist in the dashboard** — this is the single most important thing to understand before touching `backend/main.py` or the dashboard:
+1. **Legacy single-form case reviewer** (`/reviewer`, `POST /api/forms/{id}/review`) — one case/form at a time, approve writes straight into `EXCEL_CELL_MAP` cells of a per-form Excel copy. Still live and still exercised by all three intake channels.
+2. **Person-centric per-year reviewer** (`/` client list → `/clients/[id]`, `POST /api/tax-years/{id}/generate`) — built for ADR-0001: browse a client's documents grouped by tax year, edit the merged per-year record, generate `EA_{year}.xlsx` from the canonical template (`backend/templates/EA_template.xlsx`, built by `scripts/build_ea_template.py`) via a *different* cell map (`EA_RECORD_CELL_MAP`, column C throughout — see `build_ea_template.py`'s docstring for the full row layout).
+
+Both write real Excel output; neither has been retired. Check which flow a change needs before assuming `EXCEL_CELL_MAP` is the only mapping in play.
 
 ## Services
 
-Five independent services, four of which are orchestrated by `docker-compose.yml`:
+| Component  | Tech | Port | Role |
+|---|---|---|---|
+| n8n | n8n | 5678 | Orchestrates 3 intake channels (webhook/Gmail/WhatsApp) into the AI + DB pipeline. Not in git; exported workflow JSON in `n8n/`. |
+| ai-service | Python FastAPI, PyMuPDF, Pillow (`ai-service/main.py`) | 8000 | `POST /extract` (vision: renders every PDF page, sends to Ollama) and `POST /extract_text` (LLM over an already-extracted text layer, no rendering). Bounds concurrency with a semaphore (`AI_MAX_CONCURRENCY`, default 2) around a threaded Ollama call. |
+| Ollama | Ollama | 11434 | Local vision/text model host. Model tag is env-driven (`MODEL_NAME`) — see "Model choice" below. |
+| backend | Python FastAPI, single file (`backend/main.py`, ~1700 lines) + `classify.py` + `extractors.py` | 8080 | Owns Postgres, the 4-lane extraction cascade, merge logic, both Excel-write paths, client-folder filing, document serving, audit log. |
+| Postgres 16 | — | 5432 | `clients`, `client_identities`, `tax_years`, `cases`, `forms`, `extractions`, `reviews`, `audit_log`, `address_geocode`, `whatsapp_contacts`. |
+| dashboard | Next.js 16 / React 19 / Tailwind v4 | 3000 | Runs on the host (`npm run dev`), not in compose. Three pages — see below. |
+| storage/ | shared bind mount into n8n/ai-service/backend | — | Uploads, per-client `Clients/{name}_{year}/EA_{year}.xlsx` + filed originals, and the Ollama model cache (`storage/ollama_models`). |
 
-- **ai-service/** — Python 3.11 FastAPI, single file (`main.py`). One route, `POST /extract`: rasterizes **every page** of an uploaded PDF with PyMuPDF (`fitz`) (not just page 1 — intake photos often split across pages, e.g. the signature landing on page 2), sends all page images in one call to a local Ollama vision model (`MODEL_NAME` env var, default `llava`; **currently set to `minicpm-v` in `docker-compose.yml`** — see below for why), returns `{fields, confidence}` JSON. Pulls the model on startup (needs internet on first run only — the "airgapped" property is about runtime inference calls, not this one-time model download). A parse failure on the model's JSON response is logged (`logger.warning`, includes the raw response) rather than silently discarded. The Ollama call itself retries up to 4 times with backoff before giving up and returning `{"error": "service_unavailable", ...}` — see RUNNING.md.
-- **backend/** — Python 3.11 FastAPI, single file (`main.py`). Owns Postgres access and the per-client Excel writes. Routes: `GET /api/forms/pending`, `POST /api/forms` (persists a manual dashboard upload's extraction — or failure — to Postgres; without this the dashboard's own upload button never touched the DB at all), `POST /api/forms/{form_id}/review` (now requires `reviewer_name`; blocks approval on a duplicate `(e_card_number, tax_year)`; computes travel cost; writes an `audit_log` row for every extraction/approval/rejection/duplicate-block/write). On approval, copies `backend/templates/EA_2025_template.xlsx` into `storage/Clients/{Surname}_{Firstname}_{TaxYear}/EA_{TaxYear}.xlsx` (first approval for that client+year only) and writes just the input cells (`EXCEL_CELL_MAP`), leaving the sheet's `Gewinn`/`Grundfreibetrag`/`Einkünfte` formulas untouched — **the template is a placeholder reconstructed from the dev spec's §8 table, not the client's real file; see RUNNING.md before trusting any cell position.** If Postgres is unreachable at startup, it silently falls back to a hardcoded "mock mode" that fakes one pending form — if API responses look suspiciously static, check whether the DB connection actually succeeded.
-- **dashboard/** — Next.js 16.2.10 (App Router) + React 19 + TypeScript + Tailwind v4. Single-page reviewer UI at `dashboard/src/app/page.tsx`. Talks directly to `backend` (`http://localhost:8080`) and `ai-service` (`http://localhost:8000`) via hardcoded URLs (no env config, no proxy). **Not** part of docker-compose — run it standalone. Requires a "Reviewed by" name before Approve/Reject; shows banners for missing/low-confidence fields and a distinct "Extraction Failed" state.
-- **n8n/** — one workflow export, `Intake_Flow_Real.json` ("Phase 8: Real Intake Flow (Webhook + Gmail + WhatsApp)", live workflow id `sn3IWsWJ04lCYkYG`, 36 nodes — the three previously-separate channel workflows were merged into this single one on 2026-07-21; see `issues/09-activate-whatsapp-intake.md` and `.scratch/phase1-next-steps/map.md`). Activation requires a browser session, can't be done via CLI/API — see `RUNNING.md`. **Three** independent, fully-parallel ingestion paths, all writing into the same `forms`/`extractions`/`audit_log` tables: **(1) webhook** (`POST /webhook/upload-real`) → calls `ai-service` internally at `http://intake-ai:8000/extract` via a native HTTP Request node (not a Code node — Code nodes run in a task-runner subprocess with a hard 300s timeout, too short for CPU-bound vision inference) → inserts into `forms` then `extractions` via parameterized Postgres queries (`queryReplacement`, not string interpolation), `actor: 'n8n'` in `audit_log`. **(2) Gmail** (`Gmail Trigger`, polls every minute for unread messages with pdf/image attachments) → a `Split Attachments` Code node fans one email's multiple attachments out into one item per attachment (pure in-memory reshaping, no external calls, so the Code-node timeout concern above doesn't apply here) → same `ai-service` call, same DB insert shape, `actor: 'n8n-gmail'` in `audit_log`. The Gmail credential (OAuth2, id `"2"` in the JSON) doesn't exist until created manually in the n8n UI — same class of manual/browser-only setup as workflow activation and the WhatsApp WABA verification, just Google's OAuth consent instead of Meta's. **(3) WhatsApp** (Meta Cloud API) — a *pair* of webhook entry nodes: `WhatsApp Webhook (Verify)` handles Meta's GET verification handshake (`Check Verify Token` → `Respond: Verified`/`Respond: Forbidden`), and `WhatsApp Webhook (Receive Message)` takes the inbound POST → `Filter Media Messages` → `Extract Media Info` → `Get Media URL` → `Download Media Bytes` (the media isn't in the webhook payload; it must be fetched from Meta's media endpoint with the WABA token) → same `ai-service` `/extract` call → same `forms`/`extractions` DB inserts with a `status='failed'` error branch, `actor: 'n8n-whatsapp'` in `audit_log`. All three paths' HTTP Request nodes retry (`retryOnFail`/`maxTries`/`waitBetweenTries`) and, on persistent failure, route to an error branch (`onError: "continueErrorOutput"`) that inserts a `forms` row with `status='failed'` plus an `audit_log` entry instead of just crashing the execution. This also duplicates part of what the dashboard's manual upload flow does — all three paths converge on the same tables. n8n's own DB (`workflow_entity`) tends to accumulate duplicate imports of this workflow from repeated testing — check the `updatedAt` column (or the n8n UI) to find the current one rather than assuming the first result is it.
-- **database/** — just `schema.sql` (tables: `forms`, `extractions`, `reviews`, `audit_log`; `forms` also carries `e_card_number`/`tax_year` for idempotency, `reviews` carries `reviewer_name`). No migration tool, but the file is written to be safely re-runnable (`IF NOT EXISTS`/`ADD COLUMN IF NOT EXISTS`). **The schema is not applied automatically** — docker-compose does not mount it as a Postgres init script, so a fresh Postgres container has no tables until you run it manually.
+### The 4-lane extraction cascade (`backend/extractors.py`, `backend/main.py`'s `_extract_primaries`)
+
+Deterministic-first, cheapest lane wins, falls through only on failure:
+1. **AcroForm read** — pull values straight from a fillable PDF's form fields.
+2. **Kennzahl label-join text-parse** — for born-digital text PDFs (E1a), join Austrian tax Kennzahl codes (KZ 9100/9134/9190/9233/...) to their values by parsing the text layer. No model cost.
+3. **LLM-over-text** (`ai-service` `/extract_text`) — feed the text layer to the local LLM.
+4. **Vision** (`ai-service` `/extract`) — render pages, vision model. Last resort: scans/photos with no usable text layer.
+
+Also in `extractors.py`: a `.vcf` contact-card parser (phone/email, no model cost) and doc-type-aware lanes for E9 (spouse) and FamBH (children). `classify.py` decides doc type, junk-filtering, year-from-filename, and primary-vs-supporting role (`decide_case_roles`) before any of this runs.
+
+### Dashboard pages
+
+- **`/`** (`page.tsx`) — person-centric client list: one row per client with year/document counts, links into `/clients/[id]`. Read-only navigation.
+- **`/clients/[id]`** (`clients/[id]/page.tsx`) — the person-centric reviewer: left pane = client's documents grouped by tax year, middle = document preview (`DocPreview.tsx`, PDF.js — client-only, dynamically imported to avoid SSR touching browser globals), right = the merged per-year EA record, editable, with live Gewinn/Grundfreibetrag/Einkünfte and a "Generate EA" action.
+- **`/reviewer`** (`reviewer/page.tsx`) — the original one-case-at-a-time reviewer: completeness badge, format-check banner, travel-distance suggestion, Approve/Reject gated on a "Reviewed by" name.
+
+All three talk directly to `backend` (`http://localhost:8080`) via hardcoded URLs — no env config, no proxy.
 
 ## Data flow
 
 ```
-PDF upload (dashboard button OR n8n webhook OR n8n Gmail Trigger OR n8n WhatsApp webhook)
-  -> ai-service POST /extract  (PyMuPDF render, all pages -> Ollama/minicpm-v -> JSON fields)
-       -> on persistent model/service failure: forms row written with status='failed', audit_log entry
-  -> Postgres: forms, extractions rows written (backend POST /api/forms for the dashboard path)
-  -> dashboard reviewer enters a name, approves/edits/rejects
-  -> backend POST /api/forms/{id}/review
-       -> blocks approval if (e_card_number, tax_year) already approved elsewhere (idempotency)
-       -> reviews row written (with reviewer_name), forms.status updated, audit_log entries written
-       -> on approve: travel cost computed (distance x2 x EUR0.42 x trips, capped EUR6000), written into storage/Clients/{Surname}_{Firstname}_{TaxYear}/EA_{TaxYear}.xlsx (copied from backend/templates/EA_2025_template.xlsx on first write for that client+year)
+Intake (Gmail poll / WhatsApp webhook / n8n webhook / dashboard upload / scripts/import_person_folder.py bulk backfill)
+  -> POST /api/intake/case: classify() each attachment (doc type, junk filter, year, primary/supporting)
+       -> match/create client (by email/phone/name identity), ensure tax_years row
+       -> file supporting docs into storage/Clients/{name}_{year}/; primaries queued for background extraction
+  -> _extract_primaries: 4-lane cascade per primary doc -> extractions row
+  -> merge_year_fields: per-(client, year) merge across all that year's extractions -> tax_years.ea_fields (draft)
+  -> reviewer opens /clients/[id], edits the merged record, POST /api/tax-years/{id}/generate
+       -> writes EA_{year}.xlsx from backend/templates/EA_template.xlsx via EA_RECORD_CELL_MAP, tax_years.status = 'generated'
+
+(in parallel, still live) legacy single-form path:
+  PDF upload -> ai-service /extract -> forms + extractions rows -> /reviewer -> POST /api/forms/{id}/review
+       -> blocks duplicate (e_card_number, tax_year); computes travel cost; writes EXCEL_CELL_MAP cells into
+          storage/Clients/{name}_{year}/EA_{year}.xlsx (copied from EXCEL_TEMPLATE_PATH on first write)
 ```
 
-`storage/` is a shared volume mounted into `n8n`, `ai-service`, and `backend` containers — it holds uploaded working files, the per-client `Clients/` Excel outputs, and the Ollama model cache (`storage/ollama_models`).
+Every step (extraction, extraction_failed, approval, rejection, duplicate_blocked, write, file, completeness, greeting_sent) is logged to `audit_log`.
 
 ## Commands
 
-**Start the core stack** (postgres, n8n, ollama, ai-service, backend):
+**Start the stack** (containerized Ollama — the shippable default, `MODEL_NAME=minicpm-v`):
 ```
 docker compose up -d --build
 ```
+**On this Mac**, native Ollama already owns host `:11434` (Metal GPU, `docker-compose.override.yml` pins `MODEL_NAME=qwen2.5vl:7b`) — do **not** run a bare `docker compose up -d`; bring the stack up without the containerized `ollama` service:
+```
+docker compose up -d --build --no-deps postgres n8n backend ai-service
+```
 
-**Apply the DB schema** (must be done manually, e.g. after a fresh `postgres_data` volume):
+**Apply the DB schema** (not automatic — no init-script mount):
 ```
-psql -h localhost -p 5432 -U admin -d intake -f database/schema.sql
+docker exec -i intake-db psql -U admin -d intake < database/schema.sql
 ```
-(password `password`, per docker-compose env)
+Safe to re-run anytime (`IF NOT EXISTS`/`ADD COLUMN IF NOT EXISTS` throughout).
 
-**Run the dashboard** (separately, not in compose):
+**Dashboard**:
 ```
-cd dashboard
+cd dashboard && npm install
 npm run dev      # http://localhost:3000
 npm run build
 npm run lint      # only quality check configured; no test script exists
 ```
 
-**ai-service / backend locally without Docker**:
+**Code edits to backend/ai-service take effect on restart, no rebuild** (bind-mounted): `docker compose restart backend ai-service`. Only `requirements.txt`/Dockerfile changes need `--build`.
+
+**Bulk-import a client folder** (local backfill/testing of the person-centric model — live intake goes through n8n, not this):
 ```
-cd ai-service   # or backend
-pip install -r requirements.txt
-python main.py   # ai-service serves :8000, backend serves :8080
+docker exec intake-backend python /tmp/import_person_folder.py /storage/<folder> "<ClientName>"
 ```
+
+**Accuracy eval harness** (`eval/`, stack must be up):
+```
+python3 eval/run_eval.py --model-label qwen2.5vl:7b
+```
+Scores `/extract` against labelled cases in `eval/cases/` (gitignored — real PII). A meaningful number is blocked on the client's ground-truth label set; `example.json` is a schema demo only.
 
 There are no automated tests anywhere in this repo (ai-service, backend, dashboard all lack test suites).
 
 ## Gotchas specific to this repo
 
-- Postgres credentials (`admin`/`password`) are still hardcoded in `docker-compose.yml`, and the dashboard's `localhost:8080`/`localhost:8000` fetch targets are hardcoded in `dashboard/src/app/page.tsx`. `backend`'s `DATABASE_URL` and `ai-service`'s `OLLAMA_HOST`/`MODEL_NAME` **are** env-driven now (`docker-compose.yml` → `environment:`), but if you change the Postgres password or port, you still need to update it in both `docker-compose.yml` and the dashboard's fetch targets — nothing propagates automatically.
-- **`backend` and `ai-service` CORS (fixed 2026-07-14) is now `allow_origin_regex=r"http://localhost:\d+"`, not a fixed `http://localhost:3000` origin.** `next dev` silently falls back to the next free port (3001, 3002, ...) whenever 3000 is already taken by another project on the same machine — which is exactly what happened during an end-to-end test (dashboard was actually running on 3003; the old fixed-origin CORS list made every dashboard fetch fail with a generic "Failed to fetch" and the queue rendered as a false "All caught up" with zero indication it was a CORS problem, not an empty queue). If you ever need to lock CORS back down to a single known origin (e.g. for a non-local deployment), swap the regex back for an explicit `allow_origins` list.
-- **Confidence scores were always null until 2026-07-15 — root cause and fix.** The original prompt asked the model for a separate top-level `_confidence: {field: number, ...}` object alongside the 12 flat fields. The model never produced that shape — captured raw output showed it scattering `_confidence` keys *inside* each field's own value instead (e.g. `"e_card_number": "210...", "_confidence": 1.0` as stray sibling keys, or a bare top-level `_confidence: 1.0` float), the same per-field nesting `coerce_field_value` already handled for values but the confidence-extraction code never read from. Fixed by changing the schema to ask for `{"value": ..., "confidence": ...}` per field (matching what the model already gravitated toward) and reading confidence from that nested location in `ai-service/main.py`. Confidence now populates correctly (verified live: 8/12 fields non-null on a real extraction) and is null only when a field's own value also came back unresolved — a legitimate case, not a bug.
-- `ollama_data` is declared as a named volume in `docker-compose.yml` but never mounted anywhere — the real model cache is the bind mount `./storage/ollama_models`. Don't assume the named volume holds anything.
-- `ai-service` and `backend` mount their own source directories into the containers (`./ai-service:/app`, `./backend:/app`), so code edits take effect on container restart without a rebuild — but dependency changes in `requirements.txt` do need `docker compose up -d --build`.
-- **Model choice matters a lot for extraction accuracy, and `llava` (the original default) is bad at this task.** Tested against a real handwritten sample: `llava` returned wrong or missing values for ~10 of 12 fields with falsely high self-reported confidence; `minicpm-v` got 10/12 exactly right and the other 2 off by a single character, on the same document. See `RUNNING.md` for the full comparison and how to pull additional models.
-- **`MODEL_NAME` was briefly `qwen3-vl:8b` (2026-07-13 to 2026-07-15), now back to `minicpm-v`.** The switch was a deliberate handoff decision (matching the dev spec's originally-named model, not a re-test result) and was reverted once the accuracy comparison actually got run: `qwen3-vl:8b` returned unusable output in all 3 test runs — not lower accuracy, but empty or garbled non-JSON responses, because Ollama auto-selects a "thinking" chat template/parser for this tag that the model's raw output doesn't conform to. It also took ~35 minutes to cold-load under this Docker Desktop VM's 7.6GB memory ceiling. See `RUNNING.md`'s "Tried qwen3-vl:8b" section for the full writeup. **The Mac handoff package was rebuilt on 2026-07-21 with `minicpm-v` as the shipped default** (`~/Downloads/intake-autopilot-mac-handoff-2026-07-21.tar.gz`, built by `scripts/build-mac-handoff.sh`), superseding the older `qwen3-vl:8b`-baked `intake-autopilot-mac-handoff.tar.gz` (2026-07-14). On the M2 Max Mac (32GB), `qwen2.5vl:7b` (no thinking-template/JSON-breaking issue — unlike `qwen3-vl` or `minicpm-v4.5`/`4.6`) was validated 2026-07-21 and is that machine's default via `docker-compose.override.yml` (served by native Ollama on Metal, ~8.5s/form): it reads **12/12** fields on the reference PDF. **But that required an app fix** — `qwen2.5vl` wraps each field value in a nested object (`{"value": {"amount": "€250/-"}}`), which the old `coerce_field_value()` in `ai-service/main.py` dropped to `"Unknown"` (only ~3/12 survived) until it was taught to flatten any scalar-valued nested object. See RUNNING.md's "`qwen2.5vl:7b` on the Mac" section. Caveat: validated on one document only.
-- Vision inference here is CPU-only (no GPU passthrough configured) and genuinely slow on this hardware — a 2-page form took ~4-5 min of actual compute plus another ~4 min of one-time model-load overhead if the model wasn't already warm in Ollama. `OLLAMA_KEEP_ALIVE=30m` (set on the `ollama` service) keeps a pulled model resident between calls to avoid paying that reload cost on every request, but the compute time itself is a hardware ceiling, not something further config can fix — see `RUNNING.md`.
-- The dashboard is on Next.js 16 / React 19, which postdates typical training data — `dashboard/node_modules/next/dist/docs/` has the bundled real docs for this version; check there before assuming older Next.js App Router conventions apply. (This requirement is asserted in `dashboard/AGENTS.md`, imported by `dashboard/CLAUDE.md`.)
-- The project root itself is not a git repository (no `.git` at the top level). **On the Mac handoff, this is a footgun:** the extracted package lives inside `~/Documents/GitHub`, which *is* its own git repo, so `git status`/`git rev-parse` run from the project root silently operate on that parent repo (and its unrelated sibling projects), not on this project — `git rev-parse --show-toplevel` will return `~/Documents/GitHub`, not the project dir. Separately, `dashboard/` has its own nested `.git` (the only real repo inside the project). Don't assume a bare `git` command here refers to this project.
-- **Idempotency/audit-log/travel-cost/error-handling (added 2026-07-11) — see the dedicated RUNNING.md section for the why.** Short version: duplicate approvals on the same e-card+tax-year are blocked (not silently overwritten); every extraction/approval/rejection/duplicate-block/write is logged to `audit_log`; `trip_count` is still **manually entered by the reviewer** (not derivable from geography); a failed extraction (model down, retries exhausted) shows up in the queue as `status='failed'` rather than vanishing. Actually *sending* the Romanian reply and the accuracy-eval harness are still not built — don't assume otherwise from the presence of the flagging/detection logic.
-- **`travel_distance_km` is auto-suggested (added 2026-07-15), not fully manual — see RUNNING.md's "Travel distance geocoding" section.** No Nominatim/OSRM stood up (deliberately — see `.scratch/phase1-next-steps/research/05-geocoding-routing.md`); instead a small `address_geocode` Postgres lookup table (populated by ad hoc manual `INSERT`s, not an automated pipeline) plus haversine×1.25-circuity distance in `backend/main.py`'s `compute_travel_suggestion()`. Falls back to fully-manual entry when either address isn't in the lookup yet (dashboard shows a "No Travel Distance Suggestion" banner in that case). Address matching is exact-text (case/whitespace-normalized only), so OCR variance across extractions of the same physical address can still miss a lookup hit.
-- **Per-client Excel writes with a real cell mapping (added 2026-07-11) — see the dedicated RUNNING.md section.** Approval now writes into `storage/Clients/{Surname}_{Firstname}_{TaxYear}/EA_{TaxYear}.xlsx`, copied from `backend/templates/EA_2025_template.xlsx`, with formulas preserved and only input cells (`EXCEL_CELL_MAP` in `backend/main.py`) touched. **That template is a reconstruction from the dev spec's prose, not the client's real file** — the client's actual `EA_2025.xlsx` was never handed into this repo. Two cells are explicit guesses (`svs_sva` → `D11` vs `B11`; the spec's `A25` target has no mapped source field at all). The name→folder naming (`build_client_folder_name`) no longer splits into firstname/surname (fixed 2026-07-21): the earlier "firstname surname" assumption produced a swapped `Surname_Firstname` folder whenever the form was filled surname-first — which the literal-extraction prompt now surfaces verbatim (e.g. "Ray Arnab" for a person named Arnab Ray). Word order can't be recovered from one free-text token, so the folder is now `{name-as-written, underscored}_{TaxYear}` with no order assumption. See RUNNING.md's "Per-client Excel writes" section. `create_client_folder`/`file_documents` is only partially done — the folder gets created, but the original form image/PDF isn't filed into it yet.
-- **Gmail intake path (added 2026-07-11) — see the dedicated RUNNING.md section.** `n8n/Intake_Flow_Real.json` now has a `Gmail Trigger` → `Split Attachments` → `Call AI Service (Gmail)` chain running fully parallel to the webhook path, writing into the same tables (`actor: 'n8n-gmail'` in `audit_log` to distinguish it). Needs a Gmail OAuth2 credential created manually in the n8n UI (Google Cloud project + OAuth consent, client-side setup, not code) before it can activate — same manual-browser-only category as workflow activation itself. **WhatsApp intake was subsequently built and merged into the same workflow on 2026-07-21** (`actor: 'n8n-whatsapp'`; verified live — see the n8n service bullet above and `issues/09-activate-whatsapp-intake.md`), so all three channels now share one workflow rather than being separate/unbuilt.
+- **Mock mode**: if `DATABASE_URL`'s host (`postgres`, the compose service name) isn't reachable when `backend` starts, it silently falls back to fake `/api/forms/pending` data. `docker logs intake-backend` showing no "MOCK MODE" line is your confirmation it's really talking to Postgres. Fix requires the DB up *and then* `docker restart intake-backend` once more.
+- **CORS** on both `backend` and `ai-service` is `allow_origin_regex=r"http://localhost:\d+"`, not a fixed origin — `next dev` silently moves to 3001/3002/... whenever 3000 is taken, and a fixed-origin CORS list turns that into a silent, misleading "all caught up" empty queue rather than an error.
+- **Model choice has a long, non-obvious history** (`llava` → bad; `minicpm-v` → good, current shippable default; `qwen3-vl:8b` → broken output from a thinking-template mismatch, reverted; `qwen2.5vl:7b` → this Mac's native-Ollama default, needed a `coerce_field_value` fix for its nested-object field shape). Full comparison and reasoning in `RUNNING.md`'s "Model choice" section — don't re-litigate this from scratch.
+- **Two Excel templates exist on disk**: `backend/templates/EA_template.xlsx` (canonical, generated by `scripts/build_ea_template.py`, used by the new per-year `/generate` flow) and `backend/templates/EA_2025_template.xlsx` (older placeholder used by the legacy `/review` approval path, `EXCEL_CELL_MAP`). Neither is the client's actual hand-tailored sheet — both are structural reconstructions; verify cell positions before trusting a production write.
+- **The model's self-reported confidence is not a usable correctness signal** — it stays flat regardless of correctness. The dashboard instead runs a deterministic "Format Check" (`getFormatFlags()` in the reviewer pages: e-card must be exactly 10 digits, amount fields must contain a digit, address fields can't equal a bare form-label token, etc.) plus a hardcoded `KNOWN_UNRELIABLE_FIELDS` list. See RUNNING.md for why the alternatives (multi-sample agreement, prompt-tuning confidence, a labelled eval set) were rejected or deferred.
+- **Vision inference is genuinely slow and hardware-dependent**: CPU-only in a plain Docker Desktop container (minutes per form); native Ollama on Apple Silicon Metal or an NVIDIA GPU (client's Windows box) is ~8s/form. `OLLAMA_KEEP_ALIVE=30m` avoids a ~4min reload penalty on gaps between requests but doesn't touch compute time itself.
+- **The client's Windows PC has its own customized compose files**, not in this repo — never overwrite them when deploying code there (they're backed up as `docker-compose.yml.client-backup-*` on that box). See `SESSION-HANDOVER-2026-09-01.md` §4/§9 for the two-compose-files rule and the deploy folder path (the folder name is also the Postgres volume key — deploy into the exact existing folder).
+- **The dashboard is on Next.js 16 / React 19**, which postdates typical training data — check `dashboard/node_modules/next/dist/docs/` before assuming older App Router conventions apply (asserted in `dashboard/AGENTS.md`, imported by `dashboard/CLAUDE.md`).
+- **`travel_distance_km` is auto-suggested, not fully manual** — a small manually-populated `address_geocode` lookup table plus haversine×1.25 in `compute_travel_suggestion()` (`backend/main.py`), not a live geocoding service (deliberate — see RUNNING.md's "Travel distance geocoding"). Exact-text address matching only; OCR variance across extractions of the same address can miss a lookup hit.
+- **n8n's own Postgres tables accumulate duplicate workflow imports** from repeated testing — check `workflow_entity.updatedAt` (or the n8n UI) rather than assuming the first search result is the live copy. Editing `n8n/*.json` on disk does not update an already-imported workflow; you must re-import.
+- **Activating an n8n workflow requires a browser session** — no CLI/API shortcut exists (n8n's Active toggle registers the webhook route through its own engine via an authenticated UI action).
