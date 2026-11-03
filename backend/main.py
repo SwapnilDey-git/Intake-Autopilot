@@ -701,7 +701,8 @@ async def _extract_primaries(case_id: int, jobs: list[dict]):
                 "UPDATE cases SET client_name_guess = COALESCE(client_name_guess, :n) WHERE id = :cid",
                 {"n": name.strip()[:255], "cid": case_id},
             )
-            await _bind_unassigned_case(case_id, name.strip(), form_id)
+            await _bind_unassigned_case(case_id, name.strip(), form_id,
+                                        exact=bool(fields.get("_name_exact")))
 
         # Bind the doc to a tax year and rebuild that year's EA record. Year source
         # order: (1) filename year (doc_year); (2) content year from the extraction;
@@ -725,11 +726,14 @@ async def _extract_primaries(case_id: int, jobs: list[dict]):
 
 
 # Doc types whose extracted name is the TAXPAYER (see _bind_unassigned_case).
-# The client's own questionnaire (intake_sheet) names them too.
-_NAME_SOURCE_DOC_TYPES = {"e1", "e1a", "steuererklaerung", "bescheid", "intake_sheet"}
+# The client's own questionnaire (intake_sheet) names them too. A Bescheid is not
+# here: a folder can hold a relative's Bescheid, or one addressed "z.H." someone
+# else, so its name counts only when read exactly off the page (_name_exact).
+_NAME_SOURCE_DOC_TYPES = {"e1", "e1a", "l1k", "steuererklaerung", "intake_sheet"}
 
 
-async def _bind_unassigned_case(case_id: int, name: str, form_id: int | None = None) -> None:
+async def _bind_unassigned_case(case_id: int, name: str, form_id: int | None = None,
+                                exact: bool = False) -> None:
     """A case from a new sender arrives with no client (unknown address, no name in
     the payload). Once a read yields a name, route it like the questionnaire does --
     known sender, else name match, else a new client -- and bind the case and every
@@ -739,10 +743,11 @@ async def _bind_unassigned_case(case_id: int, name: str, form_id: int | None = N
         "SELECT client_id, sender FROM cases WHERE id = :id", {"id": case_id})
     if not case or case["client_id"]:
         return
-    # Only a tax return / Bescheid names the taxpayer reliably. A name read off a
-    # supporting doc (honorar note, SVS letter, E9 spouse, FamBH child, an ID
-    # photo...) may be someone else's, so it must not create/route the client.
-    if form_id is not None:
+    # Only an exact printout read or the person's own return / questionnaire names
+    # the taxpayer reliably. A model read off a supporting doc (Bescheid, honorar
+    # note, SVS letter, E9 spouse, FamBH child, an ID photo...) may be someone
+    # else's, so it must not create/route the client.
+    if form_id is not None and not exact:
         f = await database.fetch_one("SELECT doc_type FROM forms WHERE id = :id", {"id": form_id})
         if not f or (f["doc_type"] or "").lower() not in _NAME_SOURCE_DOC_TYPES:
             return
