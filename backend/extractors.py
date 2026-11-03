@@ -268,6 +268,116 @@ def _extract_e1_identity(doc) -> dict:
     return out
 
 
+# --- FinanzOnline printout identity -------------------------------------------
+# A Steuererklärung printed from FinanzOnline carries TWO kinds of names:
+#   * the page header "Teilnehmer*in: <name>  Bearbeiter*in: <name>" -- the tax
+#     ADVISOR's FinanzOnline account that filed it (the same on every client's
+#     printout), and
+#   * "Unternehmensdaten -> Firmenname <name>" -- the taxpayer (for these sole
+#     traders the business name IS the person's name).
+# The LLM-over-text lane used to take the first name it saw, i.e. the advisor's,
+# which then became the new client's display name. These helpers read both
+# deterministically so the caller can (a) force the taxpayer name and (b) reject
+# any extracted name that is really the filer. Children's names ("Angaben zum
+# Kind -> Familien- oder Nachname") are deliberately never used.
+_FILER_LABEL_RE = re.compile(r"(?i)\b(Teilnehmer|Bearbeiter|Benutzer)(\*?in(nen)?|\(in\)|/in)?\s*:")
+# Plain "Name" row of a FinanzOnline Anbringen/Antrag printout (Name / Anschrift /
+# Ort / Finanzamt / Steuernummer) -- the taxpayer the submission is for.
+_NAME_ROW_RE = re.compile(r"^\s*Name\b[\s:]*(.*)$")
+_FIRMENNAME_RE = re.compile(r"(?i)^\s*Firmenname\b[\s:]*(.*)$")
+
+
+def _clean_name(v: str) -> str:
+    return re.sub(r"\s+", " ", (v or "")).strip(" :\t")
+
+
+def _finanzonline_filer_names(text: str) -> list[str]:
+    """Names printed after 'Teilnehmer*in:' / 'Bearbeiter*in:' / 'Benutzer*in:' (the filer, never
+    the taxpayer). A value runs until the next label on the same line."""
+    out: list[str] = []
+    for line in (text or "").splitlines():
+        matches = list(_FILER_LABEL_RE.finditer(line))
+        for i, m in enumerate(matches):
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(line)
+            val = _clean_name(line[m.end():end])
+            # drop a trailing timestamp/date the header sometimes carries
+            val = _clean_name(re.split(r"\s\d{1,2}\.\d{1,2}\.\d{2,4}", val)[0])
+            if val and re.search(r"[A-Za-zÀ-ž]{2}", val):
+                out.append(val)
+    return out
+
+
+def _finanzonline_taxpayer_name(text: str) -> str | None:
+    """The 'Firmenname' value from the Unternehmensdaten block. Handles both
+    text-layer shapes PyMuPDF produces for a two-column table row: label and
+    value on one line ("Firmenname   Popescu Ana") or the value on the next
+    non-empty line."""
+    lines = (text or "").splitlines()
+    for i, line in enumerate(lines):
+        m = _FIRMENNAME_RE.match(line)
+        if not m:
+            continue
+        val = _clean_name(m.group(1))
+        if not val:
+            for nxt in lines[i + 1:i + 4]:
+                if _clean_name(nxt):
+                    val = _clean_name(nxt)
+                    break
+        # a value that is itself another row label means the cell was empty
+        if val and not re.match(r"(?i)^(anschrift|plz|ort|steuernummer|land)\b", val) \
+                and re.search(r"[A-Za-zÀ-ž]{2}", val):
+            return val[:255]
+    return None
+
+
+def _finanzonline_name_row(text: str) -> str | None:
+    """Fallback for Anbringen/Antrag printouts with no Unternehmensdaten block:
+    the first exact 'Name' row (value on the same line or the next one). Only
+    called when the doc carries the FinanzOnline filer header."""
+    lines = (text or "").splitlines()
+    for i, line in enumerate(lines):
+        m = _NAME_ROW_RE.match(line)
+        if not m:
+            continue
+        val = _clean_name(m.group(1))
+        if not val:
+            for nxt in lines[i + 1:i + 3]:
+                if _clean_name(nxt):
+                    val = _clean_name(nxt)
+                    break
+        if val and not re.match(r"(?i)^(anschrift|ort|finanzamt|steuernummer|bv|bereich)\b", val) \
+                and re.search(r"[A-Za-zÀ-ž]{2}", val):
+            return val[:255]
+        return None
+    return None
+
+
+def name_matches_filer(name: str, filer_names: list[str]) -> bool:
+    """True when an extracted name is really the filer's (advisor's) name --
+    compared token-set-wise so 'Mag. X Y' == 'Y X' and title/order noise is ignored."""
+    def toks(s: str) -> set[str]:
+        return {t for t in re.findall(r"[A-Za-zÀ-ž]{2,}", (s or "").lower())
+                if t not in {"mag", "dr", "mmag", "dipl", "ing", "stb", "prof"}}
+    nt = toks(name)
+    if not nt:
+        return False
+    return any(nt and (nt <= toks(f) or toks(f) <= nt) for f in filer_names if toks(f))
+
+
+def finanzonline_identity(text: str) -> dict:
+    """{'name': taxpayer name or None, 'filer_names': [...]} for a FinanzOnline
+    printout's text layer; empty dict when the text isn't one."""
+    filers = _finanzonline_filer_names(text)
+    name = _finanzonline_taxpayer_name(text)
+    if not name and filers:
+        name = _finanzonline_name_row(text)
+    if name and filers and name_matches_filer(name, filers):
+        name = None  # never hand back the filer as the taxpayer
+    if not filers and not name:
+        return {}
+    return {"name": name, "filer_names": filers}
+
+
 # Confidence assigned to a deterministic read. AcroForm named-field reads are as
 # certain as parsing gets; the spatial label-join is a hair less (row heuristics),
 # so it's marked slightly lower to reflect honest uncertainty to the reviewer.
@@ -403,15 +513,25 @@ def extract_document(content: bytes, doc_type: str, filename: str = "") -> dict:
                     fields.setdefault(k, v)
                     conf.setdefault(k, _CONF_JOIN)
 
+        # Taxpayer-vs-filer identity off a FinanzOnline printout's text layer. Not a
+        # field read on its own (it must not short-circuit lane 3, which still has
+        # to read the money lines) -- the caller applies it on top of whichever lane
+        # produced the fields.
+        # Computed for EVERY doc type: any FinanzOnline printout (FamBH, honorar,
+        # Bescheid, Antrag...) carries the advisor in its header.
+        identity = finanzonline_identity(text)
+
         if fields:
-            return {"ok": True, "lane": "acroform", "fields": fields, "confidence": conf}
+            return {"ok": True, "lane": "acroform", "fields": fields, "confidence": conf,
+                    "identity": identity}
 
         # Nothing deterministic. Route the fallback: scanned/handwritten -> vision;
         # born-digital text -> lane 3 (LLM-over-text), carrying the text layer so the
         # caller can forward it to ai-service /extract_text without re-opening the PDF.
         if scanned:
             return _declined("vision")
-        return {"ok": False, "lane": "llm_text", "fields": {}, "confidence": {}, "text": text}
+        return {"ok": False, "lane": "llm_text", "fields": {}, "confidence": {}, "text": text,
+                "identity": identity}
     finally:
         doc.close()
 

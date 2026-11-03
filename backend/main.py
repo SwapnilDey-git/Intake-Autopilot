@@ -655,6 +655,26 @@ async def _extract_primaries(case_id: int, jobs: list[dict]):
                     )
                     doc_type = titled
 
+        # Taxpayer name on a FinanzOnline printout: the header's "Teilnehmer*in /
+        # Bearbeiter*in" is the tax advisor who filed it, not the client. Force the
+        # deterministic Unternehmensdaten->Firmenname read, and never let a lane hand
+        # back the filer's name (it would otherwise become the client's name).
+        identity = det.get("identity") or {}
+        if identity:
+            fields = dict(fields)
+            confidence = dict(confidence or {})
+            if identity.get("name"):
+                fields["name"] = identity["name"]
+                confidence["name"] = extractors._CONF_JOIN
+                # Marker for merge_year_fields: this name was READ off the printed
+                # page, not inferred by a model -> it outranks model reads of name.
+                fields["_name_exact"] = True
+            else:
+                cur = fields.get("name")
+                if isinstance(cur, str) and extractors.name_matches_filer(cur, identity.get("filer_names") or []):
+                    fields.pop("name", None)
+                    confidence.pop("name", None)
+
         # A form's extraction is idempotent -- re-extraction (initial retry, or the
         # /reextract endpoint after a fix like this one) must SUPERSEDE any prior
         # result, not append beside it. Without this delete, _rebuild_year_record's
@@ -681,7 +701,7 @@ async def _extract_primaries(case_id: int, jobs: list[dict]):
                 "UPDATE cases SET client_name_guess = COALESCE(client_name_guess, :n) WHERE id = :cid",
                 {"n": name.strip()[:255], "cid": case_id},
             )
-            await _bind_unassigned_case(case_id, name.strip())
+            await _bind_unassigned_case(case_id, name.strip(), form_id)
 
         # Bind the doc to a tax year and rebuild that year's EA record. Year source
         # order: (1) filename year (doc_year); (2) content year from the extraction;
@@ -704,7 +724,11 @@ async def _extract_primaries(case_id: int, jobs: list[dict]):
                 await _rebuild_year_record(frow["client_id"], year)
 
 
-async def _bind_unassigned_case(case_id: int, name: str) -> None:
+# Doc types whose extracted name is the TAXPAYER (see _bind_unassigned_case).
+_NAME_SOURCE_DOC_TYPES = {"e1", "e1a", "steuererklaerung", "bescheid"}
+
+
+async def _bind_unassigned_case(case_id: int, name: str, form_id: int | None = None) -> None:
     """A case from a new sender arrives with no client (unknown address, no name in
     the payload). Once a read yields a name, route it like the questionnaire does --
     known sender, else name match, else a new client -- and bind the case and every
@@ -714,6 +738,13 @@ async def _bind_unassigned_case(case_id: int, name: str) -> None:
         "SELECT client_id, sender FROM cases WHERE id = :id", {"id": case_id})
     if not case or case["client_id"]:
         return
+    # Only a tax return / Bescheid names the taxpayer reliably. A name read off a
+    # supporting doc (honorar note, SVS letter, E9 spouse, FamBH child, an ID
+    # photo...) may be someone else's, so it must not create/route the client.
+    if form_id is not None:
+        f = await database.fetch_one("SELECT doc_type FROM forms WHERE id = :id", {"id": form_id})
+        if not f or (f["doc_type"] or "").lower() not in _NAME_SOURCE_DOC_TYPES:
+            return
     client_id = await _match_or_create_client(case["sender"], name)
     if not client_id:
         return
@@ -1218,6 +1249,7 @@ def merge_year_fields(sources: list[dict]) -> dict:
         dt = s.get("doc_type") or "other"
         allow = DOC_FIELD_ALLOWLIST.get(dt)
         not_written = set((s.get("fields") or {}).get("_not_in_text") or [])
+        name_exact = bool((s.get("fields") or {}).get("_name_exact"))
         for k, v in (s.get("fields") or {}).items():
             ea = _EXTRACT_TO_EA.get(k, k)
             if ea not in EA_RECORD_FIELDS:
@@ -1233,8 +1265,15 @@ def merge_year_fields(sources: list[dict]) -> dict:
                 v, note = _resolve_calc(v)
                 if note is None and k in not_written:
                     note = {"raw": str(v), "kind": "not_in_text"}
+            rank = _field_rank(ea, dt)
+            if ea == "name" and name_exact:
+                # A name read deterministically off a FinanzOnline printout /
+                # Bescheid (Firmenname / Name row) beats every MODEL read of name --
+                # a vision read of a scanned E1/E1a can return an unrelated name.
+                # Only the client's own questionnaire answer (rank 0) stays ahead.
+                rank = 0.5
             cand[ea].append({"value": v, "doc_type": dt, "form_id": s.get("form_id"),
-                             "rank": _field_rank(ea, dt), "date": s.get("doc_date") or "",
+                             "rank": rank, "date": s.get("doc_date") or "",
                              "calc": note})
     # A doc whose money lines were read cell-by-cell (ai-service Kennzahl-cell
     # reader marks it with _kz_cells_checked) has KNOWN blanks: an empty line on
@@ -2014,6 +2053,36 @@ async def rebuild_tax_year(ty_id: int):
     return {"success": True, "tax_year_id": ty_id}
 
 
+async def _rename_client(client_id: int, old_name: str | None, new_name: str, actor: str):
+    """Rename a client and carry its per-year folders (Clients/{name}_{year}/) over
+    to the new name. A folder is only moved when the target doesn't exist yet;
+    otherwise it is left in place and logged, never merged or overwritten."""
+    await database.execute(
+        "UPDATE clients SET display_name = :d, normalized_name = :n WHERE id = :id",
+        {"d": new_name[:255], "n": _normalize_name(new_name), "id": client_id},
+    )
+    moved, kept = [], []
+    if old_name:
+        for r in await database.fetch_all("SELECT year FROM tax_years WHERE client_id = :c", {"c": client_id}):
+            src = CLIENTS_DIR / build_client_folder_name(old_name, str(r["year"]))
+            dst = CLIENTS_DIR / build_client_folder_name(new_name, str(r["year"]))
+            if not src.exists() or src == dst:
+                continue
+            if dst.exists():
+                kept.append(r["year"])
+                continue
+            src.rename(dst)
+            moved.append(r["year"])
+            await database.execute(
+                "UPDATE tax_years SET ea_path = REPLACE(ea_path, :s, :t) WHERE client_id = :c AND year = :y",
+                {"s": str(src), "t": str(dst), "c": client_id, "y": r["year"]},
+            )
+    await database.execute(
+        "INSERT INTO audit_log (form_id, event_type, actor, details) VALUES (NULL, 'client_renamed', :a, :dt)",
+        {"a": actor, "dt": json.dumps({"client_id": client_id, "moved_years": moved, "kept_years": kept})},
+    )
+
+
 class TaxYearGenerate(BaseModel):
     fields: dict            # reviewer-confirmed flat {ea_field: value}
     reviewer_name: str
@@ -2053,6 +2122,17 @@ async def generate_tax_year_ea(ty_id: int, payload: TaxYearGenerate):
 
     if not EXCEL_TEMPLATE_PATH.exists():
         raise HTTPException(status_code=500, detail=f"Excel template missing at {EXCEL_TEMPLATE_PATH}")
+
+    # The reviewer-confirmed name is the person's legal filing name. If it differs
+    # from the client's display name (e.g. the client was auto-created from a wrong
+    # read), rename the client -- and move its existing per-year folders -- so the
+    # EA lands in the right folder and the client list shows the right person.
+    confirmed = d.get("name")
+    if isinstance(confirmed, str) and confirmed.strip() and confirmed not in UNMAPPED_VALUES \
+            and confirmed.strip() != (ty["display_name"] or ""):
+        await _rename_client(ty["client_id"], ty["display_name"], confirmed.strip(), payload.reviewer_name)
+        ty = dict(ty)
+        ty["display_name"] = confirmed.strip()
 
     folder = build_client_folder_name(ty["display_name"] or d.get("name", "") or f"client{ty['client_id']}", year)
     client_dir = CLIENTS_DIR / folder

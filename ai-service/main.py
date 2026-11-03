@@ -909,7 +909,12 @@ _FIELD_HINTS = {
                      "Steuernummer, and NOT a child's or spouse's number. If not "
                      "printed, it is Not Found.",
     "name": "the taxpayer's full name (the person the document is FOR/addressed to -- "
-            "NOT a tax office, agency, or SVS institution name).",
+            "NOT a tax office, agency, or SVS institution name). On a FinanzOnline "
+            "printout the header line 'Teilnehmer*in: ... Bearbeiter*in: ...' names the "
+            "tax ADVISOR who filed it -- never return that name, and never a name "
+            "carrying a professional title such as Mag., Dr. or Steuerberater. The "
+            "taxpayer is the 'Firmenname' under 'Unternehmensdaten' (or the name in the "
+            "taxpayer's own address block). Never a child's name from 'Angaben zum Kind'.",
     "address_austria": "the taxpayer's Austrian postal address (street, postal code, city) "
                        "as printed in the document header/address block.",
     "spouse": "the full name of the taxpayer's spouse/partner. On an E9 / Bescheinigung "
