@@ -46,6 +46,7 @@ type EAField = {
   // client's handwritten working for a money field: "calc" = total taken after the last "=",
   // "multi" = several amounts, no single result -> reviewer must decide
   calc?: { raw: string; kind: "calc" | "multi" | "not_in_text"; calc_ok?: boolean | null; computed?: boolean };
+  km_note?: string;
 };
 type YearRecord = {
   id: number;
@@ -521,6 +522,14 @@ export default function ClientReviewerPage({ params }: { params: Promise<{ id: s
                                 }`}
                               >
                                 {meta.calc.kind === "multi" || meta.calc.kind === "not_in_text" || meta.calc.calc_ok === false ? "prüfen" : "Rechnung"}
+                              </span>
+                            )}
+                            {meta?.km_note && (
+                              <span
+                                title={`Auf dem Blatt steht auch „Kilometer ${meta.km_note}“ — Kilometergeld statt Transportkosten? Bitte prüfen`}
+                                className="shrink-0 rounded-sm border border-warning/50 px-1.5 py-0.5 text-[10px] uppercase text-warning"
+                              >
+                                km {meta.km_note} · prüfen
                               </span>
                             )}
                             </div>

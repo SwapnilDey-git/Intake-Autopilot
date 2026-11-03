@@ -1339,6 +1339,16 @@ def merge_year_fields(sources: list[dict]) -> dict:
         }
         if best.get("calc"):
             out[ea]["calc"] = best["calc"]  # client's written working, for the reviewer
+    # A handwritten sheet can give BOTH a transport cost and a yearly "Kilometer
+    # 10.000" (seen 2026-11-03). Which one the office books (transport cost or
+    # Kilometergeld) is the reviewer's call: the km line rides along on Reisekosten
+    # as a "prüfen" note and is never turned into an amount here.
+    km = next((str(f.get("kilometer")).strip() for f in ((s.get("fields") or {}) for s in sources)
+               if f.get("kilometer") not in UNMAPPED_VALUES and str(f.get("kilometer") or "").strip()), None)
+    if km:
+        out.setdefault("reisekosten", {"value": None, "source_form_id": None, "source_doc_type": None,
+                                       "conflict": False, "alternatives": [], "superseded": []})
+        out["reisekosten"]["km_note"] = km
     return out
 
 

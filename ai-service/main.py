@@ -202,8 +202,12 @@ _ID_PHOTO_PROMPT = """
           NEVER a Romanian CNP (13 digits), an ID card number, or a card sequence
           number like "006". If there is no e-card in the image, "Not Found".
         - 'home_address': the home address printed on the ID card / passport
-          ("Domiciliu", "Adresse", "Address"), copied exactly as printed. Not the
-          place of birth. If there is none, "Not Found".
+          ("Domiciliu", "Adresse", "Address"), copied exactly as printed. It is
+          usually printed over TWO OR MORE lines -- the town/county line (e.g.
+          "Jud.XX Mun.Musterstadt", "Com.", "Sat", "Oraș") AND the street line
+          ("Str. ... nr. ..."). Return ALL of those lines together, joined with
+          ", " -- never only the street. Not the place of birth. If there is
+          none, "Not Found".
         For EACH key the value must be an object {"value": <string>, "confidence": <0.0-1.0>}.
         Do NOT guess: anything not clearly printed is "Not Found".
         """
@@ -458,7 +462,7 @@ async def extract_document(request: Request):
           # lines, and one key made the model drop one of them (seen 2026-10-26).
           FIELD_KEYS = [
             "tax_year", "e_card_number", "stnr", "name", "address_austria", "home_address",
-            "honorare", "svs_sva", "wko_contribution", "provisionen", "reisekosten",
+            "honorare", "svs_sva", "wko_contribution", "provisionen", "reisekosten", "kilometer",
             "marital_status", "children", "is_signed", "document_title"
           ]
 
@@ -513,6 +517,9 @@ async def extract_document(request: Request):
           "Kommission", "Komision Firma", "comision", "Agentur").
         - 'reisekosten': travel / transport costs ("Transport", "Fahrt",
           "Fahrtkosten", "hin und retour", "Reisekosten", "drum").
+        - 'kilometer': ONLY a distance in kilometres the writer wrote ("Kilometer",
+          "km", "Km gefahren"), e.g. "10.000". Never a euro amount. If there is
+          no kilometre line, "Not Found".
         - 'children': ONLY the NUMBER of children (e.g. "2", "0", "keine"). An answer
           about Familienbeihilfe (e.g. "nicht bekommen") is NOT a number of children
           -- then use "Not Found".
@@ -526,7 +533,7 @@ async def extract_document(request: Request):
 
         Return ONLY a JSON object with these exact keys:
         'tax_year', 'e_card_number', 'stnr', 'name', 'address_austria', 'home_address',
-        'honorare', 'svs_sva', 'wko_contribution', 'provisionen', 'reisekosten',
+        'honorare', 'svs_sva', 'wko_contribution', 'provisionen', 'reisekosten', 'kilometer',
         'marital_status', 'children', 'is_signed', 'document_title'.
 
         'document_title' is the exception to the handwriting rule: transcribe the
