@@ -726,10 +726,12 @@ async def _extract_primaries(case_id: int, jobs: list[dict]):
 
 
 # Doc types whose extracted name is the TAXPAYER (see _bind_unassigned_case).
-# The client's own questionnaire (intake_sheet) names them too. A Bescheid is not
+# The client's own questionnaire names them too -- typed (intake_sheet) or a photo
+# of the handwritten one (photo_form; a hand-filled official form such as an E9
+# has already been re-typed by its title by then). A Bescheid is not
 # here: a folder can hold a relative's Bescheid, or one addressed "z.H." someone
 # else, so its name counts only when read exactly off the page (_name_exact).
-_NAME_SOURCE_DOC_TYPES = {"e1", "e1a", "l1k", "steuererklaerung", "intake_sheet"}
+_NAME_SOURCE_DOC_TYPES = {"e1", "e1a", "l1k", "steuererklaerung", "intake_sheet", "photo_form"}
 
 
 async def _bind_unassigned_case(case_id: int, name: str, form_id: int | None = None,
@@ -759,6 +761,19 @@ async def _bind_unassigned_case(case_id: int, name: str, form_id: int | None = N
     await database.execute(
         "UPDATE forms SET client_id = :c WHERE case_id = :id AND client_id IS NULL",
         {"c": client_id, "id": case_id})
+    # Docs already read before the client existed and with no filename year (a
+    # photo of the questionnaire, an ID photo) skipped the year binding at read
+    # time: give them the year the read would have -- content year, else the case's.
+    unyeared = await database.fetch_all(
+        """SELECT f.id, e.json_result FROM forms f JOIN extractions e ON e.form_id = f.id
+           WHERE f.case_id = :id AND f.doc_year IS NULL""", {"id": case_id})
+    for r in unyeared:
+        j = r["json_result"]
+        j = j if isinstance(j, dict) else json.loads(j or "{}")
+        year = _year_from_value(j.get("tax_year")) or await _case_year_hint(case_id, exclude_form_id=r["id"])
+        if year:
+            await database.execute(
+                "UPDATE forms SET doc_year = :y WHERE id = :id", {"y": year, "id": r["id"]})
     years = await database.fetch_all(
         "SELECT DISTINCT doc_year FROM forms WHERE case_id = :id AND doc_year IS NOT NULL",
         {"id": case_id})
