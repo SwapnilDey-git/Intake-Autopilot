@@ -725,7 +725,8 @@ async def _extract_primaries(case_id: int, jobs: list[dict]):
 
 
 # Doc types whose extracted name is the TAXPAYER (see _bind_unassigned_case).
-_NAME_SOURCE_DOC_TYPES = {"e1", "e1a", "steuererklaerung", "bescheid"}
+# The client's own questionnaire (intake_sheet) names them too.
+_NAME_SOURCE_DOC_TYPES = {"e1", "e1a", "steuererklaerung", "bescheid", "intake_sheet"}
 
 
 async def _bind_unassigned_case(case_id: int, name: str, form_id: int | None = None) -> None:
@@ -820,6 +821,13 @@ def _normalize_name(s: str) -> str:
     s = unicodedata.normalize("NFKD", (s or "").strip())
     s = s.encode("ascii", "ignore").decode("ascii")
     return " ".join(s.lower().split())
+
+
+def _same_name(a: str | None, b: str | None) -> bool:
+    """Same words regardless of order, case, accents or punctuation."""
+    def words(s):
+        return set(re.findall(r"[a-z0-9]+", _normalize_name(s or "")))
+    return bool(words(a)) and words(a) == words(b)
 
 
 def _identity_kind(sender: str) -> str:
@@ -2127,12 +2135,25 @@ async def generate_tax_year_ea(ty_id: int, payload: TaxYearGenerate):
     # from the client's display name (e.g. the client was auto-created from a wrong
     # read), rename the client -- and move its existing per-year folders -- so the
     # EA lands in the right folder and the client list shows the right person.
+    # Same person written differently (order, case, accents: "Popescu Mirela" vs
+    # "Mirela Popescu") is not a rename. A name another client already carries is
+    # left for a human to merge, never renamed into a duplicate.
     confirmed = d.get("name")
     if isinstance(confirmed, str) and confirmed.strip() and confirmed not in UNMAPPED_VALUES \
-            and confirmed.strip() != (ty["display_name"] or ""):
-        await _rename_client(ty["client_id"], ty["display_name"], confirmed.strip(), payload.reviewer_name)
-        ty = dict(ty)
-        ty["display_name"] = confirmed.strip()
+            and not _same_name(confirmed, ty["display_name"]):
+        taken = await database.fetch_one(
+            "SELECT id FROM clients WHERE normalized_name = :n AND id <> :id",
+            {"n": _normalize_name(confirmed), "id": ty["client_id"]})
+        if taken:
+            await database.execute(
+                "INSERT INTO audit_log (form_id, event_type, actor, details) "
+                "VALUES (NULL, 'client_rename_skipped', :a, :dt)",
+                {"a": payload.reviewer_name,
+                 "dt": json.dumps({"client_id": ty["client_id"], "other_client_id": taken["id"]})})
+        else:
+            await _rename_client(ty["client_id"], ty["display_name"], confirmed.strip(), payload.reviewer_name)
+            ty = dict(ty)
+            ty["display_name"] = confirmed.strip()
 
     folder = build_client_folder_name(ty["display_name"] or d.get("name", "") or f"client{ty['client_id']}", year)
     client_dir = CLIENTS_DIR / folder
