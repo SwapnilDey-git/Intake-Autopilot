@@ -4,6 +4,8 @@ intake-backend so it can reach Postgres, /storage and the backend's own parsers.
     python /tmp/ea_bench_helper.py cleanup
     python /tmp/ea_bench_helper.py status
     python /tmp/ea_bench_helper.py score /tmp/ea_labels.json
+    python /tmp/ea_bench_helper.py pinscore /tmp/ea_pins.json
+    python /tmp/ea_bench_helper.py pinseed <client_id> <year> <field,field,...>
 
 Only ever touches clients named "BENCH <n>" -- safe to run next to real clients.
 `score` prints JSON WITH values (practice + ours); the host stores it in the
@@ -187,6 +189,97 @@ async def score(db, labels_path):
     print(json.dumps({"built_labels": built, "results": results}, default=str, ensure_ascii=False))
 
 
+# --- pinned answers: any EA-record field, checked by a person -------------------
+# The practice EA sheets carry only the money lines reliably, so identity fields
+# (name, StNr, e-card, addresses, Heimatort, Familienstand) and anything on a
+# folder with no practice sheet are scored against pins.json: per (folder, year),
+# the value a person checked against the documents. Each pin says HOW to compare,
+# so a correct read written differently still matches.
+_PIN_MODES = {
+    "number": lambda want, got: (M._to_number(got) is not None
+                                 and abs(M._to_number(got) - float(want)) < 0.01),
+    "digits": lambda want, got: re.sub(r"\D", "", str(got or "")) == str(want),
+    "words": lambda want, got: M._same_name(want, got),
+    # every expected word present (an address that lost its town line fails)
+    "contains": lambda want, got: set(want) <= set(_words(got)),
+    "text": lambda want, got: " ".join(_words(got)) == " ".join(_words(want)),
+}
+_DIGIT_FIELDS = {"stnr", "e_card_number"}
+_WORD_FIELDS = {"name", "spouse"}
+_ADDRESS_FIELDS = {"address_austria", "hometown"}
+
+
+def _words(v):
+    return re.findall(r"[a-z0-9]+", M._normalize_name(str(v or "")))
+
+
+def _pin_value(fields, path):
+    """'reisekosten' -> its value; 'reisekosten.km_note' -> that key of its entry."""
+    fld, _, sub = path.partition(".")
+    f = fields.get(fld) if isinstance(fields.get(fld), dict) else {}
+    return f.get(sub or "value")
+
+
+def _pin_for(path, v):
+    fld = path.partition(".")[0]
+    if fld in _DIGIT_FIELDS:
+        return {"digits": re.sub(r"\D", "", str(v))}
+    if fld in _WORD_FIELDS:
+        return {"words": str(v)}
+    if fld in _ADDRESS_FIELDS:
+        return {"contains": sorted(set(_words(v)))}
+    n = M._to_number(v)
+    if n is not None and fld not in ("marital_status",):
+        return {"number": n}
+    return {"text": str(v)}
+
+
+async def _year_fields(db, client_id, year):
+    ty = await db.fetchrow("SELECT ea_fields FROM tax_years WHERE client_id = $1 AND year = $2", client_id, year)
+    ea = (json.loads(ty["ea_fields"]) if ty and isinstance(ty["ea_fields"], str)
+          else (ty["ea_fields"] if ty else None)) or {}
+    return ea.get("fields", ea) if isinstance(ea, dict) else {}
+
+
+async def pinseed(db, client_id, year, paths):
+    """Freeze the CURRENT values of a client-year as pins -- only after a person has
+    checked them against the documents. Prints values: the host writes them to the
+    gitignored pins.json and never echoes them."""
+    fields = await _year_fields(db, int(client_id), int(year))
+    out, absent = {}, []
+    for p in paths.split(","):
+        v = _pin_value(fields, p)
+        if v in M.UNMAPPED_VALUES or (isinstance(v, str) and not v.strip()):
+            absent.append(p)
+        else:
+            out[p] = _pin_for(p, v)
+    print(json.dumps({"pins": out, "absent": absent}, ensure_ascii=False))
+
+
+async def pinscore(db, pins_path):
+    pins = json.load(open(pins_path)) if os.path.exists(pins_path) else {}
+    results = []
+    for c in await bench_clients(db):
+        key = c["display_name"][len(PREFIX):]
+        for lk, expect in pins.items():
+            fkey, year = lk.split("|")
+            if fkey != key:
+                continue
+            fields = await _year_fields(db, c["id"], int(year))
+            row = {"key": lk, "fields": {}}
+            for path, want in expect.items():
+                got = _pin_value(fields, path)
+                (mode, wv), = want.items()
+                if got in M.UNMAPPED_VALUES or (isinstance(got, str) and not got.strip()):
+                    st = "missing"
+                else:
+                    st = "match" if _PIN_MODES[mode](wv, got) else "wrong"
+                row["fields"][path] = {"status": st, "ours": got,
+                                       "src": (fields.get(path.partition(".")[0]) or {}).get("source_doc_type")}
+            results.append(row)
+    print(json.dumps({"results": results}, default=str, ensure_ascii=False))
+
+
 async def amain():
     db = await asyncpg.connect(os.environ["DATABASE_URL"])
     try:
@@ -197,6 +290,13 @@ async def amain():
             await status(db)
         elif cmd == "score":
             await score(db, sys.argv[2])
+        elif cmd == "pinscore":
+            await pinscore(db, sys.argv[2])
+        elif cmd == "benchclient":
+            c = await db.fetchrow("SELECT id FROM clients WHERE display_name = $1", PREFIX + sys.argv[2])
+            print(json.dumps({"client_id": c["id"] if c else None}))
+        elif cmd == "pinseed":
+            await pinseed(db, *sys.argv[2:5])
     finally:
         await db.close()
 

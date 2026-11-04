@@ -25,6 +25,32 @@ change against the previous run, and the non-matches grouped by our source
 document type — which tells you *where* to look (a doc type to classify, a
 field a prompt never asks for, a parser bug).
 
+## Pinned answers (any field, any folder)
+
+The practice sheets only give the money lines. Everything else -- name, StNr,
+e-card, addresses, Heimatort, Familienstand, the Kilometer note -- and folders
+with no practice sheet at all (a new client, a handwritten Fragebogen) are
+scored against **pins**: values a person checked against the documents.
+
+```
+# a client folder or zip that is not in the corpus (remembered from then on)
+python3 eval/ea_benchmark/run.py --extra "<client folder or .zip>" --label add-x
+# after CHECKING the values on the dashboard against the documents:
+python3 eval/ea_benchmark/run.py --pin "<key>|2025" --fields name,stnr,hometown,reisekosten.km_note
+#   (--from-client <id> reads them off a live client instead of the BENCH one)
+```
+
+A pin stores how to compare: digits for StNr/e-card, same words in any order
+for names, "all these words present" for addresses (so an address that loses
+its town line fails), numbers for amounts. Keys are `<corpus index>-<hash>` or
+`x<hash>` for an extra; `pins.json` holds real values and is gitignored.
+
+## Regression gate
+
+Each run is compared with the last run over the **same** folders and extras.
+Every line or pinned field that matched before and does not now is listed as
+`REGRESSED`, and the run exits with code 2 -- that change does not ship.
+
 ## What it does
 
 1. Removes the previous run's data — only clients named `BENCH …`; real clients

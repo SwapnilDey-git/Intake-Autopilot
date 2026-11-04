@@ -1,4 +1,5 @@
 __pycache__/
 # EA benchmark: answer keys + runs hold real client figures
 ea_benchmark/labels.json
+ea_benchmark/pins.json
 ea_benchmark/runs/
