@@ -1359,6 +1359,107 @@ def merge_year_fields(sources: list[dict]) -> dict:
 _IDENTITY_FIELDS = ["name", "stnr", "e_card_number", "address_austria", "hometown", "tel", "email"]
 
 
+# --- deterministic plausibility checks (no model) --------------------------------
+# Each check that fails adds a German note to that field's "checks" list; the
+# dashboard shows it as "prüfen". Nothing is changed or blocked -- the reviewer decides.
+
+_SVNR_WEIGHTS = (3, 7, 9, 0, 5, 8, 4, 2, 1, 6)  # position 4 is the check digit itself
+
+
+def _svnr_problem(v) -> str | None:
+    """Austrian Sozialversicherungsnummer: 4-digit serial (check digit at position
+    4) + birth date DDMMYY. A misread digit almost always breaks the mod-11 check."""
+    d = re.sub(r"\D", "", str(v or ""))
+    if len(d) != 10:
+        return f"SVNR hat {len(d)} statt 10 Ziffern"
+    if d[0] == "0":
+        return "SVNR beginnt mit 0 -- so wird keine vergeben"
+    check = sum(int(c) * w for c, w in zip(d, _SVNR_WEIGHTS)) % 11
+    if check == 10 or check != int(d[3]):
+        return "SVNR-Prüfziffer stimmt nicht -- wahrscheinlich eine Ziffer falsch gelesen"
+    dd, mm = int(d[4:6]), int(d[6:8])
+    if not (1 <= dd <= 31 and 1 <= mm <= 12):
+        return f"SVNR-Geburtsdatum {d[4:6]}.{d[6:8]}. ist kein gültiges Datum"
+    return None
+
+
+_UNIT_RE = re.compile(r"(\d+)\s*(monate?|mon\.|luni|lună|luna|wochen|woche|săptămâni|quartale?)\b", re.I)
+
+
+def _unit_problem(calc) -> str | None:
+    """A handwritten working that names a count ("12 Monate") and then multiplies
+    by a different one ("506 x 4"): the units don't agree, so either the count or
+    the factor was misread -- or the client meant quarters. The reviewer decides."""
+    if not calc or calc.get("kind") != "calc":
+        return None
+    raw = calc.get("raw") or ""
+    m = _UNIT_RE.search(raw)
+    if not m:
+        return None
+    count = int(m.group(1))
+    lhs = raw.split("=")[-2] if "=" in raw else raw
+    factors = [_to_number(t) for t in _AMOUNT_TOKEN_RE.findall(_calc_tail(lhs))]
+    if len(factors) < 2 or not re.search(r"[x×*]", _calc_tail(lhs), re.I):
+        return None
+    if any(f is not None and abs(f - count) < 0.01 for f in factors):
+        return None
+    small = min(f for f in factors if f is not None)
+    return f"„{m.group(0)}“, gerechnet aber × {_fmt_amount(small)} -- Einheiten passen nicht zusammen"
+
+
+# Bounds from the office's own EA sheets (11 client-years, 2026-11-04): SV was
+# 7-21 % of Honorare, all expenses together 50-66 %, no single line above 33 %.
+# The limits sit well outside that, so only real outliers fire.
+_SV_SHARE = (0.03, 0.40)
+_LINE_SHARE_MAX = 0.60
+_EXPENSE_LINES = ("svs_sva", "kleinmaterial", "provisionen", "abschreibung", "sonstiger_aufwand", "reisekosten")
+_LINE_LABEL = {"svs_sva": "SV", "kleinmaterial": "Kleinmaterial", "provisionen": "Provisionen",
+               "abschreibung": "Abschreibung", "sonstiger_aufwand": "Sonstiger Aufwand",
+               "reisekosten": "Reisekosten"}
+
+
+def _plausibility_checks(merged: dict, year: int, doc_dates: dict) -> dict:
+    """{ea_field: [note, ...]} for every field of the merged record that fails a
+    deterministic check: SVNR check digit, units in a handwritten working, ratios
+    against Honorare, and a source document dated before its tax year began."""
+    out = {}
+
+    def add(ea, msg):
+        if ea in merged and msg:
+            out.setdefault(ea, []).append(msg)
+
+    def num(ea):
+        n = _to_number((merged.get(ea) or {}).get("value"))
+        return n if n is not None and n >= 0 else None
+
+    if "e_card_number" in merged:
+        add("e_card_number", _svnr_problem(merged["e_card_number"].get("value")))
+
+    for ea in _MONEY_EA_FIELDS:
+        add(ea, _unit_problem((merged.get(ea) or {}).get("calc")))
+
+    h = num("honorare")
+    if h:
+        sv = num("svs_sva")
+        if sv is not None and sv > 0 and not (_SV_SHARE[0] <= sv / h <= _SV_SHARE[1]):
+            add("svs_sva", f"SV ist {sv / h:.0%} der Honorare -- üblich sind etwa 7–21 %")
+        for ea in _EXPENSE_LINES[1:]:
+            n = num(ea)
+            if n and n / h > _LINE_SHARE_MAX:
+                add(ea, f"{_LINE_LABEL[ea]} ist {n / h:.0%} der Honorare -- ungewöhnlich hoch")
+        total = sum(num(ea) or 0 for ea in _EXPENSE_LINES)
+        if total > h:
+            add("honorare", f"Ausgaben ({_fmt_amount(total)}) sind höher als die Honorare -- "
+                            "Honorare unvollständig oder ein Betrag falsch gelesen?")
+
+    # A document can't hold a year's figures before that year has started.
+    for ea, entry in merged.items():
+        d = doc_dates.get(entry.get("source_form_id")) or ""
+        if ea in _MONEY_EA_FIELDS and d[:4].isdigit() and int(d[:4]) < year:
+            add(ea, f"Quelle ist vom {d[6:8]}.{d[4:6]}.{d[:4]} -- vor Beginn des Steuerjahres {year}")
+    return out
+
+
 async def _client_identity(client_id: int) -> dict:
     """Merge the stable identity fields across ALL of a client's extracted documents
     (every year, every doc). Returns {ea_field: merged_entry} for identity fields only
@@ -1436,6 +1537,10 @@ async def _rebuild_year_record(client_id: int, year: int) -> int | None:
             entry = dict(id_view[f])
             entry["inherited"] = True
             merged[f] = entry
+
+    dates = {s["form_id"]: s["doc_date"] for s in sources}
+    for ea, msgs in _plausibility_checks(merged, year, dates).items():
+        merged[ea]["checks"] = msgs
 
     await database.execute(
         "UPDATE tax_years SET ea_fields = :f WHERE id = :id",

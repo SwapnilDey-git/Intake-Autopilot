@@ -47,6 +47,7 @@ type EAField = {
   // "multi" = several amounts, no single result -> reviewer must decide
   calc?: { raw: string; kind: "calc" | "multi" | "not_in_text"; calc_ok?: boolean | null; computed?: boolean };
   km_note?: string;
+  checks?: string[];
 };
 type YearRecord = {
   id: number;
@@ -530,6 +531,14 @@ export default function ClientReviewerPage({ params }: { params: Promise<{ id: s
                                 className="shrink-0 rounded-sm border border-warning/50 px-1.5 py-0.5 text-[10px] uppercase text-warning"
                               >
                                 km {meta.km_note} · prüfen
+                              </span>
+                            )}
+                            {(meta?.checks || []).length > 0 && (
+                              <span
+                                title={(meta?.checks || []).join("\n")}
+                                className="shrink-0 rounded-sm border border-warning/50 px-1.5 py-0.5 text-[10px] uppercase text-warning"
+                              >
+                                prüfen
                               </span>
                             )}
                             </div>
