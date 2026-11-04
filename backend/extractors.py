@@ -62,6 +62,30 @@ def _looks_svnr(v: str) -> bool:
     return bool(_SVNR_RE.search(re.sub(r"\s+", " ", v or "")))
 
 
+_SVNR_WEIGHTS = (3, 7, 9, 0, 5, 8, 4, 2, 1, 6)  # position 4 is the check digit itself
+# A 10-digit number printed under one of the SVNR labels. The SVS prints "VSNR";
+# the E-forms and the e-card say Versicherungsnummer / SVNR / VNR.
+_SVNR_LABELLED_RE = re.compile(
+    r"(?i)\b(?:VSNR|VNR|SVNR|SV-?Nr\.?|SV-Nummer|(?:Sozial)?versicherungsnummer)\b"
+    r"[^\d]{0,30}?(?<!\d)(\d{4})\s?(\d{6})(?!\d)")
+
+
+def svnr_valid(digits: str) -> bool:
+    """mod-11 check digit of an Austrian SVNR (10 digits, check digit at position 4)."""
+    if not re.fullmatch(r"[1-9]\d{9}", digits or ""):
+        return False
+    check = sum(int(c) * w for c, w in zip(digits, _SVNR_WEIGHTS)) % 11
+    return check != 10 and check == int(digits[3])
+
+
+def labelled_svnr(text: str) -> str | None:
+    """The SVNR printed under an SVNR label on a born-digital document, when the
+    text holds exactly ONE distinct such number with a valid check digit. Two
+    distinct ones (taxpayer + partner on an E1) -> None; the model decides."""
+    found = {a + b for a, b in _SVNR_LABELLED_RE.findall(text or "") if svnr_valid(a + b)}
+    return found.pop() if len(found) == 1 else None
+
+
 def _looks_stnr(v: str) -> bool:
     digits = re.sub(r"\D", "", v or "")
     return 7 <= len(digits) <= 10
@@ -520,6 +544,11 @@ def extract_document(content: bytes, doc_type: str, filename: str = "") -> dict:
         # Computed for EVERY doc type: any FinanzOnline printout (FamBH, honorar,
         # Bescheid, Antrag...) carries the advisor in its header.
         identity = finanzonline_identity(text)
+        # The SVNR off the text layer: exact where the model reads past a "VSNR".
+        if dt in ("svs", "steuererklaerung", "e1", "e1a", "l1k"):
+            svnr = labelled_svnr(text)
+            if svnr:
+                identity = {**identity, "svnr": svnr}
 
         if fields:
             return {"ok": True, "lane": "acroform", "fields": fields, "confidence": conf,

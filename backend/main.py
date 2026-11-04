@@ -674,6 +674,10 @@ async def _extract_primaries(case_id: int, jobs: list[dict]):
                 if isinstance(cur, str) and extractors.name_matches_filer(cur, identity.get("filer_names") or []):
                     fields.pop("name", None)
                     confidence.pop("name", None)
+            if identity.get("svnr"):
+                # labelled and check-digit valid: beats whatever the model read
+                fields["e_card_number"] = identity["svnr"]
+                confidence["e_card_number"] = extractors._CONF_NAMED
 
         # A form's extraction is idempotent -- re-extraction (initial retry, or the
         # /reextract endpoint after a fix like this one) must SUPERSEDE any prior
@@ -1130,7 +1134,7 @@ def _doctype_rank(dt) -> int:
 # their own ordering. Fields not listed here fall back to _DOCTYPE_RANK.
 _FIELD_AUTHORITY = {
     "stnr":          ["e1", "e1a", "l1k", "steuererklaerung", "bescheid"],
-    "e_card_number": ["l1k", "e1", "e1a", "id_photo", "intake_sheet"],
+    "e_card_number": ["l1k", "e1", "e1a", "svs", "steuererklaerung", "id_photo", "intake_sheet"],
     "name":          ["intake_sheet", "e1", "e1a", "l1k", "steuererklaerung", "bescheid"],
     "address_austria": ["intake_sheet", "e1", "e1a", "steuererklaerung", "bescheid"],
     "hometown":      ["intake_sheet", "id_photo"],
@@ -1155,7 +1159,8 @@ _FIELD_AUTHORITY = {
 # E-forms, the intake sheet, photos) may contribute any field.
 DOC_FIELD_ALLOWLIST = {
     "honorar": {"honorare", "provisionen"},
-    "svs": {"svs_sva"},
+    # SVS statement -> its SV figure, and the VSNR read off its text layer.
+    "svs": {"svs_sva", "e_card_number"},
     # vCard contact card -> only the two contact fields it authoritatively carries.
     "vcf": {"tel", "email"},
     # E9 spouse certificate -> spouse identity only (it carries no Familienstand string).
@@ -1250,6 +1255,23 @@ def _doc_date(filename, created_at) -> str:
     return created_at.strftime("%Y%m%d%H%M%S") if created_at else ""
 
 
+# An address that is clearly NOT Austrian: a foreign country / Romanian county
+# marker, or a 6-digit postcode (Romania) with no 4-digit Austrian one beside it.
+_FOREIGN_ADDR_RE = re.compile(
+    r"(?i)\b(rum[aä]nien|rom[aâ]nia|romania|ungarn|slowakei|bulgarien|kroatien|polen|"
+    r"jud\.|jude[tţț]ul?)")
+_AT_ADDR_RE = re.compile(r"(?i)\b(österreich|oesterreich|austria)\b")
+
+
+def _is_foreign_address(v) -> bool:
+    s = str(v or "")
+    if not s.strip() or _AT_ADDR_RE.search(s):
+        return False
+    if _FOREIGN_ADDR_RE.search(s):
+        return True
+    return bool(re.search(r"(?<!\d)\d{6}(?!\d)", s)) and not re.search(r"(?<!\d)\d{4}(?!\d)", s)
+
+
 _NO_CHILDREN_RE = re.compile(r"^\s*(keine?|kein kind|none|no|nein|nu|niciun(?:ul)?|-)\s*$", re.I)
 
 
@@ -1284,6 +1306,8 @@ def merge_year_fields(sources: list[dict]) -> dict:
                 continue
             if allow is not None and ea not in allow:
                 continue  # a scanned honorar/svs/bescheid may only source its own fields
+            if ea == "address_austria" and _is_foreign_address(v):
+                ea = "hometown"  # an official form's one "Anschrift" can be the home-country one
             if v in UNMAPPED_VALUES or (isinstance(v, str) and not v.strip()):
                 continue
             if ea == "children" and not _is_child_count(v):
@@ -1363,9 +1387,6 @@ _IDENTITY_FIELDS = ["name", "stnr", "e_card_number", "address_austria", "hometow
 # Each check that fails adds a German note to that field's "checks" list; the
 # dashboard shows it as "prüfen". Nothing is changed or blocked -- the reviewer decides.
 
-_SVNR_WEIGHTS = (3, 7, 9, 0, 5, 8, 4, 2, 1, 6)  # position 4 is the check digit itself
-
-
 def _svnr_problem(v) -> str | None:
     """Austrian Sozialversicherungsnummer: 4-digit serial (check digit at position
     4) + birth date DDMMYY. A misread digit almost always breaks the mod-11 check."""
@@ -1374,8 +1395,7 @@ def _svnr_problem(v) -> str | None:
         return f"SVNR hat {len(d)} statt 10 Ziffern"
     if d[0] == "0":
         return "SVNR beginnt mit 0 -- so wird keine vergeben"
-    check = sum(int(c) * w for c, w in zip(d, _SVNR_WEIGHTS)) % 11
-    if check == 10 or check != int(d[3]):
+    if not extractors.svnr_valid(d):
         return "SVNR-Prüfziffer stimmt nicht -- wahrscheinlich eine Ziffer falsch gelesen"
     dd, mm = int(d[4:6]), int(d[6:8])
     if not (1 <= dd <= 31 and 1 <= mm <= 12):

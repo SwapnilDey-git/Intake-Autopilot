@@ -221,7 +221,7 @@ _SECOND_LOOK = {
     "stnr": ('the Austrian Steuernummer (tax number) -- written after a label like '
              '"Steuernummer", "Steuernumer", "StNr" or "numar fiscal"', 9),
     "e_card_number": ('the 10-digit Austrian social insurance / e-card number (SVNR) -- '
-                      'written after a label like "Versicherungsnummer", "SVNR" or "e-card"', 10),
+                      'written after a label like "Versicherungsnummer", "SVNR", "VSNR" or "e-card"', 10),
 }
 
 
@@ -498,7 +498,7 @@ async def extract_document(request: Request):
         - 'tax_year': the tax year the figures are for ("Jahr 2025", "anul") --
           never the date the sheet was written or signed.
         - 'e_card_number': the 10-digit Austrian social insurance number (SVNR,
-          e-card, "Versicherungsnummer"). Never the Steuernummer.
+          e-card, "Versicherungsnummer", "VSNR"). Never the Steuernummer.
         - 'stnr': the Austrian Steuernummer ("Steuernummer", "Steuernumer", "StNr",
           "numar fiscal") -- a 9-digit number, written e.g. "123 456 789" or
           "12 345/6789". Copy the digits written on that line.
@@ -905,13 +905,13 @@ _FIELD_HINTS = {
     "stnr": "the Austrian tax number (Steuernummer) as printed on THIS document -- a "
             "Finanzamt code (2-3 digits) plus a 3-4 digit body, joined by a space or "
             "slash. If no Steuernummer is printed, it is Not Found. NOT "
-            "the SVNR/e-card number, and NOT a field labelled VNR/Vers.Nr./"
+            "the SVNR/e-card number, and NOT a field labelled VNR/VSNR/Vers.Nr./"
             "Versicherungsnummer (that is the same kind of number as SVNR, just a "
             "different label for it on some tax-office documents) -- if the only "
-            "identifier printed is under a VNR/Versicherungsnummer/SVNR label, this "
+            "identifier printed is under a VNR/VSNR/Versicherungsnummer/SVNR label, this "
             "field is Not Found.",
     "e_card_number": "the taxpayer's own Austrian social-insurance number "
-                     "(Versicherungsnummer / SVNR / VNR / e-card number): exactly 10 "
+                     "(Versicherungsnummer / SVNR / VSNR / VNR / e-card number): exactly 10 "
                      "digits, the last 6 being the birth date DDMMYY. NOT the "
                      "Steuernummer, and NOT a child's or spouse's number. If not "
                      "printed, it is Not Found.",
